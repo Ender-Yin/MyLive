@@ -208,6 +208,8 @@ public class MainActivity extends Activity {
                         currentChannelList.get(currentPlayingChannel).setPlaying(true);     //此刻播放的 设置播放图标
                         channelAdapter.setData(currentChannelList);
                         channelAdapter.notifyItemChanged(currentPlayingChannel);
+
+                        channelRecyclerView.smoothScrollToPosition(currentPlayingChannel);
                         channelRecyclerView.setmLastFocusPosition(currentPlayingChannel);       //设置焦点记忆为 正在播放channel
                     }
                 }else if(!view.hasFocus()){
