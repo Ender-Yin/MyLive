@@ -7,24 +7,23 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.RequiresApi;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.mylivetvtest.R;
+import com.example.mylivetvtest.module.CategoryItem;
 
 import java.util.List;
 
 public class FirstCategoryAdapter extends RecyclerView.Adapter<FirstCategoryAdapter.ViewHolder> implements View.OnFocusChangeListener,View.OnClickListener{
-    String[] mDataList;
+    List<CategoryItem> mDataList;
     Context mContext;       //当前Activity的context
 
     View.OnFocusChangeListener mOnFocu;
 
-    public FirstCategoryAdapter(Context context, String[] data){
+    public FirstCategoryAdapter(Context context, List<CategoryItem> data){
         this.mDataList = data;
         this.mContext = context;
     }
@@ -51,7 +50,7 @@ public class FirstCategoryAdapter extends RecyclerView.Adapter<FirstCategoryAdap
                 holder.itemView.setBackgroundResource(R.drawable.item_first_category_bg);       //1  为正常状态
                 holder.itemView.getBackground().setAlpha(255);
             }else if((int)payloads.get(0) == 0){
-                holder.itemView.setBackgroundResource(R.drawable.item_first_category_bg_focus);     //0  为聚焦状态
+                holder.itemView.setBackgroundResource(R.drawable.item_first_category_bg_focus);     //0  为聚焦状态 浅透明
                 holder.itemView.getBackground().setAlpha(100);
             }
         }
@@ -64,28 +63,36 @@ public class FirstCategoryAdapter extends RecyclerView.Adapter<FirstCategoryAdap
         initFocusListener();
 
         //绑定数组数据 到对应匹配视图， 每个position处的
-        holder.button.setText(mDataList[position]);
+        holder.textView.setText(mDataList.get(position).getCategoryName());
 
         holder.itemView.setTag(position);
         holder.itemView.setOnFocusChangeListener(this);
+
+        //在activity中改变数据后 调用notify 重新判断执行
+        if(mDataList.get(position).isPlaying()){
+            Log.i("绑定category数据","正在播放");
+            holder.textView.setTextColor(mContext.getResources().getColor(android.R.color.holo_orange_light));
+        }else if(!mDataList.get(position).isPlaying()){
+            holder.textView.setTextColor(mContext.getResources().getColor(R.color.white));
+        }
     }
 
     @Override
     public int getItemCount() {
-        return mDataList.length;
+        return mDataList.size();
     }
 
     public class ViewHolder extends RecyclerView.ViewHolder {
-        TextView button;
+        TextView textView;
 
         public ViewHolder(View itemView) {
             super(itemView);
             //itemView.setOnFocusChangeListener(mOnFocu);
-            button = itemView.findViewById(R.id.soap_category_title);
+            textView = itemView.findViewById(R.id.soap_category_title);
         }
 
         public TextView getmButton(){
-            return button;
+            return textView;
         }
     }
 

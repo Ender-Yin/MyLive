@@ -70,25 +70,28 @@ public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHold
 
         onBindViewHolder(holder, position);
     }*/
+
     @Override
     public void onBindViewHolder( ViewHolder holder, int position) {
-        initListener();
-
         View view= holder.itemView;
         //绑定数组数据 到对应匹配视图
         holder.mImgPoster.setImageResource(mData.get(position).getPoster());
         holder.mTextViewTitle.setText(mData.get(position).getTitle());
-        //holder.mPlayImage.setVisibility(View.INVISIBLE);
-        if(mData.get(position).isPlaying()){
-            holder.getmPlayImage().setVisibility(View.VISIBLE);
-        }else{
-            holder.getmPlayImage().setVisibility(View.INVISIBLE);
-        }
 
         //设置监听器
         view.setTag(position);
         view.setOnFocusChangeListener(this);
         view.setOnClickListener(this);
+
+        //在activity中改变数据后 调用notify 重新判断执行
+        if(mData.get(position).isPlaying()){
+            holder.getmPlayImage().setVisibility(View.VISIBLE);
+            Log.i("绑定数据channel","正在播放");
+            holder.mTextViewTitle.setTextColor(context.getResources().getColor(android.R.color.holo_orange_light));
+        }else if(!mData.get(position).isPlaying()){
+            holder.getmPlayImage().setVisibility(View.INVISIBLE);
+            holder.mTextViewTitle.setTextColor(context.getResources().getColor(R.color.white));
+        }
     }
 
     @Override

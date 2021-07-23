@@ -17,6 +17,7 @@ import android.os.Message;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
@@ -25,6 +26,7 @@ import android.widget.VideoView;
 
 import com.example.mylivetvtest.adapter.ChannelAdapter;
 import com.example.mylivetvtest.adapter.FirstCategoryAdapter;
+import com.example.mylivetvtest.module.CategoryItem;
 import com.example.mylivetvtest.module.ChannelItem;
 import com.example.mylivetvtest.newWidgt.FocusRecyclerView;
 import com.example.mylivetvtest.widget.TvRecyclerView;
@@ -41,11 +43,12 @@ public class MainActivity extends Activity {
     //
     String[] categoryList =  new String[] {"中国大陆","韩国","美国","英国","香港", "偶像","中国大陆","韩国","美国","英国","香港", "偶像",
             "中国大陆","韩国","美国","英国","香港", "偶像","中国大陆","韩国","美国","英国","香港", "偶像"};
+    List<CategoryItem> categoryItemList = new LinkedList<>();
     FocusRecyclerView firstRecyclerView;
     FirstCategoryAdapter firstCategoryAdapter;
     LinearLayoutManager firstLinerLayoutManager;
 
-    List<ChannelItem> currentChannelList = new LinkedList<ChannelItem>() ;
+    List<ChannelItem> currentChannelList = new LinkedList<>() ;
     FocusRecyclerView channelRecyclerView;
     ChannelAdapter channelAdapter;
     LinearLayoutManager channelLinearLayoutManager;
@@ -77,6 +80,7 @@ public class MainActivity extends Activity {
     int currentPlayingCategory = 0;
     int currentPlayingChannel = 0;
     boolean hasChangeChannel = false;
+    int lastPlayingCategory = 0;
     int lastPlayingChannel = 0;
 
     private final Handler mHandlerFocusFirst = new Handler(new Handler.Callback() {
@@ -135,6 +139,7 @@ public class MainActivity extends Activity {
 
         channelRecyclerView.setItemViewCacheSize(50);
         ((DefaultItemAnimator)channelRecyclerView.getItemAnimator()).setSupportsChangeAnimations(false);        //设置 改变item数据的 不产生闪烁动画
+        ((DefaultItemAnimator)firstRecyclerView.getItemAnimator()).setSupportsChangeAnimations(false);        //设置 改变item数据的 不产生闪烁动画
 
         //默认播放cctv1
         videoView = findViewById(R.id.video_view);
@@ -146,7 +151,9 @@ public class MainActivity extends Activity {
             }
         });
 
-
+        for(int i = 0; i < this.categoryList.length; i++){
+            categoryItemList.add(new CategoryItem(categoryList[i]));
+        }
         /*
         for (int i = 0; i < 20; i++) {
             currentChannelList.add(new ChannelItem("CCTV1", R.drawable.cctv1));
@@ -163,7 +170,7 @@ public class MainActivity extends Activity {
 
     void loadFirstCategories(){
         //放入第一级分类
-        firstCategoryAdapter = new FirstCategoryAdapter(this, categoryList);
+        firstCategoryAdapter = new FirstCategoryAdapter(this, categoryItemList);
         firstRecyclerView.setAdapter(firstCategoryAdapter);
 
         //-------------------CategoryRecyclerView父视图失去焦点 和 获得焦点 事件监听------------------
@@ -206,7 +213,6 @@ public class MainActivity extends Activity {
                     //当前聚焦category为 播放中category时， 使得当前播放channel获得播放图标。
                     if(position == currentPlayingCategory){
                         currentChannelList.get(currentPlayingChannel).setPlaying(true);     //此刻播放的 设置播放图标
-                        channelAdapter.setData(currentChannelList);
                         channelAdapter.notifyItemChanged(currentPlayingChannel);
 
                         channelRecyclerView.smoothScrollToPosition(currentPlayingChannel);
@@ -318,11 +324,22 @@ public class MainActivity extends Activity {
      *播放图标设置。并刷新对应item
      */
     public void showPlayingImage(){
+        //设置channel的
         currentChannelList.get(lastPlayingChannel).setPlaying(false);       //上个点击的 取消播放图标
         currentChannelList.get(currentPlayingChannel).setPlaying(true);     //此刻点击的 设置播放图标
-        channelAdapter.setData(currentChannelList);
+        //channelAdapter.setData(currentChannelList);                       //不用重新绑定数据
         channelAdapter.notifyItemChanged(currentPlayingChannel);
         channelAdapter.notifyItemChanged(lastPlayingChannel);
+
+        //设置category list的
+        categoryItemList.get(lastPlayingCategory).setPlaying(false);
+        categoryItemList.get(currentPlayingCategory).setPlaying(true);
+        firstCategoryAdapter.notifyItemChanged(currentPlayingCategory);
+        firstCategoryAdapter.notifyItemChanged(lastPlayingCategory);
+
+        //ViewGroup view = (ViewGroup) channelLinearLayoutManager.findViewByPosition(currentPlayingChannel);
+
+
         //requestAndClickRightButtonSimulate();
         Log.i("channel点击","当前点击/播放：" + currentPlayingChannel );
         Log.i("channel点击","上次点击/播放：" + lastPlayingChannel );
@@ -351,10 +368,13 @@ public class MainActivity extends Activity {
         firstRecyclerView.smoothScrollToPosition(currentPlayingCategory);
         new Handler().postDelayed(new Runnable() {
                 @Override public void run() {
-                    firstLinerLayoutManager.findViewByPosition(currentPlayingCategory).requestFocus();      //0.05秒后聚焦正在播放的category
+                    //0.05秒后聚焦正在播放的category
+                    firstLinerLayoutManager.findViewByPosition(currentPlayingCategory).requestFocus();
                     pressRight.start();
+                    //firstLinerLayoutManager.findViewByPosition(currentPlayingCategory).requestFocus();
+                    //channelLinearLayoutManager.findViewByPosition(currentPlayingChannel).requestFocus();        //直接聚焦channel
                 }
-            },5);
+            },50);
         firstLinerLayoutManager.scrollToPosition(currentPlayingCategory);
 
         //滚动到播放中channel  模拟右击
