@@ -11,8 +11,8 @@ import java.security.NoSuchAlgorithmException;
 import java.util.logging.Logger;
 
 public class MD5Util {
-
-	public static final Logger log = Logger.getLogger("myLogger");
+	
+	//public static final Logger log = Logger.getInstance();
 	/**
 	 * �����ļ��� MD5 ֵ
 	 * @param s ������ַ�
@@ -45,9 +45,7 @@ public class MD5Util {
 	 * �����ļ��� MD5 ֵ
 	 * @param s ������ַ�
 	 * @return   <strong>null</strong> ������ļ������ڻ��߲���һ���ļ� <br>
-	 * 	 <strong>md5ֵ</strong>  �ַ��32λMD5ֵ
-	 *
-	 * 	 返回散列值
+	 * 	 <strong>md5ֵ</strong>  �ַ��32λMD5ֵ  
 	 */
 	public static String getStringMD5_32(String s) {
 		try {
@@ -140,7 +138,7 @@ public class MD5Util {
         try {  
             messagedigest = MessageDigest.getInstance("MD5");  
         } catch (NoSuchAlgorithmException e) {  
-            log.fine("MD5FileUtil messagedigest��ʼ��ʧ��");
+            //log.e("MD5FileUtil messagedigest��ʼ��ʧ��");
         }  
     }  
   
@@ -185,7 +183,7 @@ public class MD5Util {
         stringbuffer.append(c1);  
     }  
     
-    protected static char hexDigits[] = { '0', '1', '2', '3', '4', '5', '6',
+    protected static char hexDigits[] = { '0', '1', '2', '3', '4', '5', '6',  
         '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f' };  
   
 }

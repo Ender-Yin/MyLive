@@ -25,6 +25,7 @@ public class AESSecurity {
 	 * @return
 	 */
 	public static String encrypt(String input, String key) {
+
 		byte[] crypted = null;
 		try {
 			// 取得私钥
