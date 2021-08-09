@@ -1,127 +1,157 @@
 <?xml version="1.0" encoding="utf-8"?>
-    <FrameLayout
-        xmlns:android="http://schemas.android.com/apk/res/android"
-        xmlns:app="http://schemas.android.com/apk/res-auto"
-        xmlns:tools="http://schemas.android.com/tools"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:focusable="false"
+    tools:context=".MainActivity">
+
+    <VideoView
+        android:id="@+id/video_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:focusable="false"
-        tools:context=".MainActivity"
-        >
+        android:focusable="false" />
 
-        <VideoView
-            android:id="@+id/video_view"
-            android:layout_width="match_parent"
+    <RelativeLayout
+        android:id="@+id/jiemulan"
+        android:layout_width="550dp"
+        android:layout_height="match_parent"
+        android:background="#020843"
+        android:focusable="false">
+
+        <com.example.mylivetvtest.newWidgt.FocusRecyclerView
+            android:id="@+id/first_recyclerView"
+            android:layout_width="200dp"
             android:layout_height="match_parent"
-            android:focusable="false"/>
+            android:descendantFocusability="afterDescendants"
+            android:focusable="false"
+            android:focusableInTouchMode="false"
+            android:scrollbarThumbVertical="@drawable/thumb_drawable"
+            android:scrollbars="vertical" />
+
+        <TextView
+            android:id="@+id/line1_1"
+            android:layout_width="2dp"
+            android:layout_height="match_parent"
+            android:layout_toEndOf="@id/first_recyclerView"
+            android:layout_toRightOf="@id/first_recyclerView"
+            android:background="@color/white"
+            android:focusable="false" />
+
 
         <RelativeLayout
-            android:focusable="false"
-            android:id="@+id/jiemulan"
-            android:layout_height="match_parent"
-            android:layout_width="550dp"
-            android:background="#020843">
-
-            <com.example.mylivetvtest.newWidgt.FocusRecyclerView
-                android:descendantFocusability="afterDescendants"
-                android:focusable="false"
-                android:focusableInTouchMode="false"
-                android:id="@+id/first_recyclerView"
-                android:layout_width="200dp"
-                android:layout_height="match_parent"
-                android:scrollbars="vertical"
-                android:scrollbarThumbVertical="@drawable/thumb_drawable" />
+            android:id="@+id/category_head"
+            android:layout_width="350dp"
+            android:layout_height="105dp"
+            android:layout_toRightOf="@id/line1_1"
+            android:focusable="false">
 
             <TextView
+                android:id="@+id/textView_head_category"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerHorizontal="true"
+                android:layout_marginTop="10dp"
                 android:focusable="false"
-                android:id="@+id/line1_1"
-                android:layout_width="2dp"
-                android:layout_height="match_parent"
-                android:background="@color/white"
-                android:layout_toEndOf="@id/first_recyclerView"
-                android:layout_toRightOf="@id/first_recyclerView"/>
+                android:text="中国大陆"
+                android:textColor="#FDD835"
+                android:textSize="30sp" />
 
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_below="@id/textView_head_category"
+                android:layout_toLeftOf="@id/textView_current_index"
+                android:focusable="false"
+                android:text="("
+                android:textColor="#FDD835"
+                android:textSize="30sp" />
 
+            <TextView
+                android:id="@+id/textView_current_index"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_below="@id/textView_head_category"
+                android:layout_toLeftOf="@id/textView_xiegang"
+                android:focusable="false"
+                android:text="0"
+                android:textColor="#FDD835"
+                android:textSize="30sp" />
 
-                <RelativeLayout
-                    android:focusable="false"
-                    android:id="@+id/category_head"
-                    android:layout_width="350dp"
-                    android:layout_height="105dp"
-                    android:layout_toRightOf="@id/line1_1">
-                    <TextView
-                        android:focusable="false"
-                        android:id="@+id/textView_head_category"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_centerHorizontal="true"
-                        android:layout_marginTop="10dp"
-                        android:textSize="30sp"
-                        android:textColor="#FDD835"
-                        android:text="中国大陆" />
+            <TextView
+                android:id="@+id/textView_xiegang"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_below="@id/textView_head_category"
+                android:layout_centerHorizontal="true"
+                android:focusable="false"
+                android:text="/"
+                android:textColor="#FDD835"
+                android:textSize="30sp" />
 
-                    <TextView
-                        android:focusable="false"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="("
-                        android:textSize="30sp"
-                        android:textColor="#FDD835"
-                        android:layout_below="@id/textView_head_category"
-                        android:layout_toLeftOf="@id/textView_current_index"/>
-                    <TextView
-                        android:focusable="false"
-                        android:id="@+id/textView_current_index"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="0"
-                        android:textSize="30sp"
-                        android:textColor="#FDD835"
-                        android:layout_below="@id/textView_head_category"
-                        android:layout_toLeftOf="@id/textView_xiegang" />
-                    <TextView
-                        android:focusable="false"
-                        android:id="@+id/textView_xiegang"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:textSize="30sp"
-                        android:textColor="#FDD835"
-                        android:text="/"
-                        android:layout_below="@id/textView_head_category"
-                        android:layout_centerHorizontal="true"/>
-                    <TextView
-                        android:focusable="false"
-                        android:id="@+id/textView_total_count"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="0"
-                        android:textSize="30sp"
-                        android:textColor="#FDD835"
-                        android:layout_below="@id/textView_head_category"
-                        android:layout_toRightOf="@id/textView_xiegang" />
-                    <TextView
-                        android:focusable="false"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text=")"
-                        android:textSize="30sp"
-                        android:textColor="#FDD835"
-                        android:layout_below="@id/textView_head_category"
-                        android:layout_toRightOf="@id/textView_total_count"/>
+            <TextView
+                android:id="@+id/textView_total_count"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_below="@id/textView_head_category"
+                android:layout_toRightOf="@id/textView_xiegang"
+                android:focusable="false"
+                android:text="0"
+                android:textColor="#FDD835"
+                android:textSize="30sp" />
 
-                </RelativeLayout>
-
-                <com.example.mylivetvtest.newWidgt.FocusRecyclerView
-                    android:descendantFocusability="afterDescendants"
-                    android:id="@+id/channel_recyclerView"
-                    android:layout_width="350dp"
-                    android:layout_height="match_parent"
-                    android:layout_below="@id/category_head"
-                    android:layout_toRightOf="@id/line1_1"
-                    android:focusable="false"
-                    />
-
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_below="@id/textView_head_category"
+                android:layout_toRightOf="@id/textView_total_count"
+                android:focusable="false"
+                android:text=")"
+                android:textColor="#FDD835"
+                android:textSize="30sp" />
 
         </RelativeLayout>
 
-    </FrameLayout>
+        <com.example.mylivetvtest.newWidgt.FocusRecyclerView
+            android:id="@+id/channel_recyclerView"
+            android:layout_width="350dp"
+            android:layout_height="match_parent"
+            android:layout_below="@id/category_head"
+            android:layout_toRightOf="@id/line1_1"
+            android:descendantFocusability="afterDescendants"
+            android:focusable="false" />
+
+
+    </RelativeLayout>
+
+    <RelativeLayout
+        android:id="@+id/container_items"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:id="@+id/channel_window_info"
+            android:layout_width="500dp"
+            android:layout_height="100dp"
+            android:layout_centerHorizontal="true"
+            android:layout_alignParentBottom="true"
+            android:layout_marginBottom="50dp"
+            android:orientation="horizontal"
+            android:background="@color/cardview_dark_background"
+            >
+                <TextView
+                    android:id="@+id/channel_window_info_index"
+                    android:layout_width="150dp"
+                    android:layout_height="match_parent"
+                    android:layout_centerInParent="true"
+                    android:text="1"
+                    android:textColor="#FFFFFF"
+                    android:textSize="40sp"
+                    android:gravity="center"
+                    android:background="@color/teal_700"/>
+
+        </LinearLayout>
+    </RelativeLayout>
+
+</FrameLayout>

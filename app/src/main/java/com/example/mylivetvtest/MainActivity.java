@@ -28,24 +28,25 @@ import com.example.mylivetvtest.adapter.ChannelAdapter;
 import com.example.mylivetvtest.adapter.FirstCategoryAdapter;
 import com.example.mylivetvtest.keyUtil.ACache;
 import com.example.mylivetvtest.keyUtil.AESSecurity;
+import com.example.mylivetvtest.keyUtil.AuthInfo;
+import com.example.mylivetvtest.keyUtil.Configs;
 import com.example.mylivetvtest.keyUtil.MACUtils;
 import com.example.mylivetvtest.keyUtil.MD5Util;
-import com.example.mylivetvtest.keyUtil.MyDecode;
+import com.example.mylivetvtest.module.MD_INFO;
 import com.example.mylivetvtest.keyUtil.RSACoder;
 import com.example.mylivetvtest.keyUtil.RandomCharData;
 import com.example.mylivetvtest.keyUtil.Tools;
-import com.example.mylivetvtest.keyUtil.testUtil;
 import com.example.mylivetvtest.module.CategoryItem;
 import com.example.mylivetvtest.module.ChannelItem;
 import com.example.mylivetvtest.newWidgt.FocusRecyclerView;
 import com.example.mylivetvtest.widget.TvRecyclerView;
+import com.google.gson.Gson;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Objects;
 
 import okhttp3.Call;
@@ -62,7 +63,7 @@ public class MainActivity extends Activity {
     private static final int UPDATE_FOCUS = 0;
     private static final int FOCUS_ON_PLAYING = 1;
     private static final int HIDE_JIE_MU_LAN = 2;
-    //
+    //一级 分类
     String[] categoryList =  new String[] {"中国大陆","韩国","美国","英国","香港", "偶像","中国大陆","韩国","美国","英国","香港", "偶像",
             "中国大陆","韩国","美国","英国","香港", "偶像","中国大陆","韩国","美国","英国","香港", "偶像"};
     List<CategoryItem> categoryItemList = new LinkedList<>();
@@ -70,6 +71,7 @@ public class MainActivity extends Activity {
     FirstCategoryAdapter firstCategoryAdapter;
     LinearLayoutManager firstLinerLayoutManager;
 
+    //二级 频道
     List<ChannelItem> currentChannelList = new LinkedList<>() ;
     FocusRecyclerView channelRecyclerView;
     ChannelAdapter channelAdapter;
@@ -85,6 +87,8 @@ public class MainActivity extends Activity {
     VideoView videoView;
     String url2 = "http://cctvalih5ca.v.myalicdn.com/live/cctv1_2/index.m3u8";
     String url1 = "http://ivi.bupt.edu.cn/hls/cctv6hd.m3u8";
+    String SAMPLE_URL = "https://vfx.mtime.cn/Video/2019/03/21/mp4/190321153853126488.mp4";
+    TextView textView_window_index;
 
     ImageView playingImage;
     RelativeLayout channelRelativeLayout = null;
@@ -143,10 +147,16 @@ public class MainActivity extends Activity {
         loadFirstCategories();
 
         findViewById(R.id.jiemulan).getBackground().setAlpha(200);          //节目栏设置为透明 只一点
+        findViewById(R.id.channel_window_info).getBackground().setAlpha(200);          //节目栏设置为透明 只一点
         mHandlerFocusFirst.sendEmptyMessageDelayed(UPDATE_FOCUS, 1000);     //打卡app一秒后聚焦
 
-        getAllPrograms();
-
+        MACUtils.initMac(this);
+        MACUtils.initWifiMac(this);
+        MAC = MACUtils.getMac();
+        Log.e("MAC",MAC);
+        Log.e("wifiMAC",MACUtils.getWifiMac());
+        findFromNet(true);
+        //getAllPrograms();
         //showAndHideJiemulan();
     }
     void focusOnFirstCategoryItem(){
@@ -165,6 +175,7 @@ public class MainActivity extends Activity {
 
     @SuppressLint("ResourceType")
     void initialize(){
+        textView_window_index = findViewById(R.id.channel_window_info_index);
         jieMuLan = findViewById(R.id.jiemulan);
 
         textView_head_category = findViewById(R.id.textView_head_category);
@@ -195,6 +206,7 @@ public class MainActivity extends Activity {
                 videoView.start();
             }
         });
+
 
         for(int i = 0; i < this.categoryList.length; i++){
             categoryItemList.add(new CategoryItem(categoryList[i]));
@@ -237,7 +249,11 @@ public class MainActivity extends Activity {
             @SuppressLint("LongLogTag")
             @Override
             public void onMyFocusChange(View view, int position,Context context) {
-                if (view.hasFocus() && !firstFromCateToChannel ) {       // 聚焦一级列表 且 返回一级列表之后， 聚焦再执行方法.
+                if(jieMuLan.getVisibility() == View.VISIBLE){
+                    showAndHideJiemulan();
+                    Log.e("节目栏显示/按键","切换了焦点");
+                }
+                if (view.hasFocus() && !firstFromCateToChannel ) {       // 聚焦一级列表 且 返回一级列表之后， 执行方法.
                     textView_currentIndex.setText("0");                 //设置当前初始index
 
                     currentFocusCategory = categoryList[position];
@@ -253,7 +269,7 @@ public class MainActivity extends Activity {
                     }
                 }
                 if (view.hasFocus()){
-                    firstFromCateToChannel = false;     //获得焦点后 可以切换一级列表焦点时 刷新adapter
+                    firstFromCateToChannel = false;     //获得焦点后， 可以在切换一级列表焦点时 刷新adapter
                     Log.i("Category Item聚焦","cate获焦，可以刷新channel列表");
 
                     //当前聚焦category为 播放中category时， 使得当前播放channel获得播放图标。
@@ -286,8 +302,8 @@ public class MainActivity extends Activity {
         channelRecyclerView.setGainFocusListener(new TvRecyclerView.FocusGainListener() {
             @Override
             public void onFocusGain(View child, View focued) {
-                //isEnterChannelList = 2;      //进去过
-
+                //  isEnterChannelList = 2;      //进去过
+                // not the right thing to report and take the good right
             }
         });
         channelRecyclerView.setFocusLostListener(new TvRecyclerView.FocusLostListener() {
@@ -305,7 +321,7 @@ public class MainActivity extends Activity {
             case "中国大陆":
                 currentChannelList.clear();
                 currentChannelList.add(new ChannelItem("CCTV1", R.drawable.cctv1,"http://cctvalih5ca.v.myalicdn.com/live/cctv1_2/index.m3u8"));
-                currentChannelList.add(new ChannelItem("CCTV6", R.drawable.cctv6,"http://ivi.bupt.edu.cn/hls/cctv6hd.m3u8"));
+                currentChannelList.add(new ChannelItem("CCTV6", R.drawable.cctv6,SAMPLE_URL));
                 for (int i = 0; i < 20; i++) {
                     currentChannelList.add(new ChannelItem("CCTV1", R.drawable.cctv1));
                 }
@@ -329,23 +345,26 @@ public class MainActivity extends Activity {
 
         //--------------------Channel Adapter的Item 焦点变化监听--------------------------
         channelAdapter.setOnItemFocusChangeListener((view, position, mContext) -> {
-                if(view.hasFocus()) {
-                    mLastFocusPositionChannel = channelRecyclerView.getmLastFocusPosition();     //设为当前 channel聚焦位置
+            if(jieMuLan.getVisibility() == View.VISIBLE){
+                showAndHideJiemulan();
+                Log.e("节目栏显示/按键","切换了焦点");
+            }
+            if (view.hasFocus()) {
+                mLastFocusPositionChannel = channelRecyclerView.getmLastFocusPosition();     //设为当前 channel聚焦位置
 
-                    int currentPos = position + 1;
-                    textView_currentIndex.setText("" + currentPos);         //设置当前 index
+                int currentPos = position + 1;
+                textView_currentIndex.setText("" + currentPos);         //设置当前 index
 
-                    countChangeFocusPos = 0;         //焦点改变后可以 重新赋值最新位置
+                countChangeFocusPos = 0;         //焦点改变后可以 重新赋值最新位置
 
-                    //设为正常背景
-                    ChannelAdapter.ViewHolder viewHolder = (ChannelAdapter.ViewHolder)
-                            channelRecyclerView.findViewHolderForAdapterPosition(channelRecyclerView.getmLastFocusPosition());
-                    viewHolder.itemView.setBackgroundResource(R.drawable.channel_bg);
+                //设为正常背景
+                ChannelAdapter.ViewHolder viewHolder = (ChannelAdapter.ViewHolder)
+                        channelRecyclerView.findViewHolderForAdapterPosition(channelRecyclerView.getmLastFocusPosition());
+                viewHolder.itemView.setBackgroundResource(R.drawable.channel_bg);
 
 
-                }
-                else if(!view.hasFocus()){         //焦点失去时执行
-                }
+            } else if (!view.hasFocus()) {         //焦点失去时执行
+            }
         });
         channelAdapter.setmOnVideoClickListener(new ChannelAdapter.OnVideosClickListener() {
             @Override
@@ -354,15 +373,17 @@ public class MainActivity extends Activity {
                 currentPlayingChannel = channelRecyclerView.getmLastFocusPosition();        // 这里 和 position 的值是一样的
                 currentPlayingCategory = firstRecyclerView.getmLastFocusPosition();
                 showPlayingImage();
-                lastPlayingChannel = currentPlayingChannel;
-                lastPlayingCategory = currentPlayingCategory;
 
                 //显示列表 自己选择要播放的频道 点击切换频道
                 ChannelItem channelItem =currentChannelList.get(position);
                 String url = channelItem.getUrl();
-                if (url != null){
+                if (url != null && currentPlayingChannel != lastPlayingChannel){
                     stopAndPlay(url);
                 }
+
+                //更新
+                lastPlayingChannel = currentPlayingChannel;
+                lastPlayingCategory = currentPlayingCategory;
             }
         });
     }
@@ -416,6 +437,7 @@ public class MainActivity extends Activity {
                 @Override public void run() {
                     //0.05秒后聚焦正在播放的category
                     if (hasChangeChannelForJumpFocus){
+                        firstFromCateToChannel = false;         //使得节目栏显示 聚焦播放中category时 能够切换channel列表
                         firstLinerLayoutManager.findViewByPosition(currentPlayingCategory).requestFocus();
                         pressRight.start();
                     }else if(!hasChangeChannelForJumpFocus){
@@ -436,7 +458,7 @@ public class MainActivity extends Activity {
         channelRecyclerView.setmLastFocusPosition(currentPlayingChannel);       //设置焦点记忆为 播放中channel
     }
 
-    public void showJiemulan(){
+    public void showJiemulan(){                         //仅使得 显示节目栏时使用
         jieMuLan.setVisibility(View.VISIBLE);           //开始寻找焦点
 
         //------------------------------界面显示了-----------------------------------------
@@ -532,7 +554,7 @@ public class MainActivity extends Activity {
     }*/
 
     @Override
-    public boolean dispatchKeyEvent(KeyEvent event) {
+    public boolean onKeyDown(int keyCode, KeyEvent event){
         switch (event.getKeyCode()){
             case KeyEvent.KEYCODE_DPAD_CENTER:
                 if(!isMemuVisi) {
@@ -548,8 +570,9 @@ public class MainActivity extends Activity {
                 break;
             case KeyEvent.KEYCODE_DPAD_DOWN:        //往小的频道切换
                 if(isMemuVisi){showAndHideJiemulan();
-                    Log.e("按键"," 点下了按键");}
+                    Log.e("节目栏显示/按键"," 点下了下按键");}
                 if(!isMemuVisi) {       //界面隐藏时执行
+                    Log.e("节目栏隐藏/按键"," 点下了下按键");
                     if (lastPlayingChannel == 0){
                         Toast.makeText(this, "到底了" , Toast.LENGTH_SHORT).show();
                     }
@@ -563,6 +586,7 @@ public class MainActivity extends Activity {
 
                         //改变图片
                         currentPlayingChannel = currentPlayingChannel - 1;                    //向下位移
+                        textView_window_index.setText("" + (currentPlayingChannel+1));         //小窗设置当前 index
                         showPlayingImage();
                         lastPlayingChannel = currentPlayingChannel;
                     }
@@ -570,8 +594,9 @@ public class MainActivity extends Activity {
                 }
             case KeyEvent.KEYCODE_DPAD_UP:        //往大的频道切换
                 if(isMemuVisi){showAndHideJiemulan();
-                    Log.e("按键"," 点下了按键");}
-                if(!isMemuVisi) {       //界面隐藏时执行
+                    Log.e("节目栏显示/按键"," 点下了上按键");}
+                if(!isMemuVisi) {       //节目栏隐藏时执行
+                    Log.e("节目栏隐藏/按键"," 点下了上按键");
                     if (lastPlayingChannel == currentChannelList.size() - 1){
                         Toast.makeText(this, "到底了" , Toast.LENGTH_SHORT).show();
                     }
@@ -585,6 +610,7 @@ public class MainActivity extends Activity {
 
                         //改变图片
                         currentPlayingChannel = currentPlayingChannel + 1;                    //向下位移
+                        textView_window_index.setText("" + (currentPlayingChannel+1));         //小窗设置当前 index
                         showPlayingImage();
                         lastPlayingChannel = currentPlayingChannel;
                     }
@@ -592,15 +618,18 @@ public class MainActivity extends Activity {
                 }
             case KeyEvent.KEYCODE_DPAD_RIGHT:
                 if(isMemuVisi){showAndHideJiemulan();
-                    Log.e("按键"," 点下了按键");}
+                    Log.e("节目栏显示/按键"," 点下了右按键");}
             case KeyEvent.KEYCODE_DPAD_LEFT:
                 if(isMemuVisi){showAndHideJiemulan();
-                    Log.e("按键"," 点下了按键");}
+                    Log.e("节目栏显示/按键"," 点下了左按键");}
         }
 
-        return super.dispatchKeyEvent(event);
+        return super.onKeyDown(keyCode, event);
     }
 
+
+    String HOST = "http://vodlist.maoq.pw";
+    String MAC = "";
     //--------------------------------获取节目列表相关--------------------------------------
     @RequiresApi(api = Build.VERSION_CODES.O)
     public void getAllPrograms() {
@@ -619,18 +648,16 @@ public class MainActivity extends Activity {
         Log.e("AESSecurity加密", AESSecurity.encrypt(AESSecurity.decrypt(miwen, key1), key1));
         Log.e("AESSecurity解密", AESSecurity.decrypt(miwen, key1));
 
+
         //Log.e("Aes_decode加密", AESSecurity.encrypt(AESSecurity.decrypt(miwen, key1), key1));
         //Log.e("Aes_decode解密", AESSecurity.decrypt(miwen, MD5Util.getStringMD5_32(key1)));
-
-        MACUtils.initMac(this);
-        String macStr = MACUtils.getMac();
 //        MyKey= RandomCharData.createRandomCharData(8);
 
         String srcData = String.format("%s@%s@%s@%s@%s@%s@%s@%s@%s@%s@%s@%s@%s",
                 "200",
                 MACUtils.GetTK(),
                 MACUtils.GetKEY(),
-                macStr,
+                MAC,
                 Build.MODEL,
                 Build.BOARD,
                 Build.BRAND,
@@ -641,7 +668,7 @@ public class MainActivity extends Activity {
                 Build.ID,
                 MACUtils.getWifiMac());
 
-        Log.i("TVLIST,srcData:" , srcData);
+        Log.e("TVLIST,srcData:" , srcData);
         String info[] = GetRsaPost(srcData);        //加密上传信息
 
         //FinalHttp fn = new FinalHttp();
@@ -669,7 +696,7 @@ public class MainActivity extends Activity {
         //MediaType MEDIA_TYPE_MARKDOWN = MediaType.parse("text/x-markdown; charset=utf-8");
         MultipartBody.Builder requestBody = new MultipartBody.Builder().setType(MultipartBody.FORM);
         requestBody.addFormDataPart("appid", "200");
-        requestBody.addFormDataPart("mac", macStr);
+        requestBody.addFormDataPart("mac", MAC);
         requestBody.addFormDataPart("gkey", info[0]);
         requestBody.addFormDataPart("token", info[1]);
         final Request request = new Request.Builder()
@@ -689,24 +716,22 @@ public class MainActivity extends Activity {
             public void onResponse(Call call, Response response) throws IOException {
                 endTime[0] = System.currentTimeMillis();
                 Log.e("onResponse","TVLIST,onSuccess: " + "取列表成功耗时:" + ((endTime[0] - startTime) / 1000 + "秒 "));
-                //Toast.makeText(getApplicationContext(), "取列表成功耗时:" + ((endTime[0] - startTime) / 1000 + "秒 "), Toast.LENGTH_LONG).show();
-                //Log.e("onResponse","TVLIST,onSuccess: " + response.toString());
                 String responseData = response.body().string();
-                Log.e("onResponse","TVLIST,onSuccess 返回的body的string数据: " + responseData);
-                //Log.e("onResponse","TVLIST,onSuccess: " + response.body().bytes());
+                Log.e("onResponse","TVLIST,onSuccess: 返回的body的string数据: " + responseData);
+                Log.e("onResponse","TVLIST,onSuccess: toString " + response.toString());
 
                 Log.e("得到的json长度： ","" + responseData.length());
-                endJson[0] = MyDecode.Aes_decode(responseData);
-                Log.e("解密后的json原文： ",endJson[0]);
+                endJson[0] = Aes_decode(responseData);
+                //Log.e("解密后的json原文： ",endJson[0]);
             }
         });
 
-        //------------------使用OKHttp 请求！！！  2    --------------------------------------
+        //------------------使用OKHttp 请求！！！  2  获得ip和t  --------------------------------------
         String t = "1627900441";
         String ip = "113.90.29.85";
         String dataFrom= "{\"t\":1627900441,\"c\":\"CN\",\"ip\":\"113.90.29.85\",\"key\":\"9936669a73ed775ee05d5376538c6665\",\"test\":\"e6ea33596a890b0c8e9868e27c0c9d0f\"}";
         final String[] ipAndT = {null};
-        String UrlForIPandT =   HOST + "/Pvod/Init/info.jsp?appid=" + "200" + "&mac=" + macStr + "&l=" + Locale.getDefault().getLanguage() + "&gj=" + Locale.getDefault().getCountry();
+        String UrlForIPandT =   HOST + "/Pvod/Init/info.jsp?appid=" + "200" + "&mac=" + MAC + "&l=" + Locale.getDefault().getLanguage() + "&gj=" + Locale.getDefault().getCountry();
         OkHttpClient okHttpClient1 = new OkHttpClient();
 
         //MediaType MEDIA_TYPE_MARKDOWN = MediaType.parse("text/x-markdown; charset=utf-8");
@@ -731,8 +756,17 @@ public class MainActivity extends Activity {
             }
         });
 
-        //----------------------------------
-        String urlForAuthor = HOST + "/Pvod/Init/init.jsp?appid=" + "200" + "&mac=" + macStr;
+        //----------------------------------认证部分-------------------------------------------
+        String urlForAuthor = HOST + "/Pvod/Init/init.jsp?appid=" + "200" + "&mac=" + MAC;
+    }
+
+    public  String Aes_decode(String aesstr) {
+        //String key = info.getT() + info.getIp() + "qq395585991";
+        String key =  "qq395585991";
+
+        String EndKey = MD5Util.getStringMD5_32(key);
+        String EedJson = AESSecurity.decrypt(aesstr, EndKey);
+        return EedJson;
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
@@ -763,14 +797,11 @@ public class MainActivity extends Activity {
     @RequiresApi(api = Build.VERSION_CODES.O)
     public void doAuth(final boolean flag, int time) {
         //FinalHttp finalHttp = new FinalHttp();
-
         String macStr = MACUtils.getMac();
-
         String enStr = RandomCharData.createRandomCharData(8);
-        String AESKEY = MD5Util.getStringMD5_16(enStr);
-
         String keyStr = RSACoder.loadKeyAssets("rsa_public_key.pem",this);
-        //    String srcData = String.format("%s@%s@%s@%s@%s",Configs.APPID, MACUtils.GetTK(), MACUtils.GetKEY(), enStr,time);
+        String AESKEY = MD5Util.getStringMD5_16(enStr);
+//		String srcData = String.format("%s@%s@%s@%s@%s",Configs.APPID, MACUtils.GetTK(), MACUtils.GetKEY(), enStr,time);
 
         //cache和随机数
         ACache aCache = ACache.get(this);
@@ -781,19 +812,19 @@ public class MainActivity extends Activity {
         } else {
             String tmpStr = RandomCharData.createRandomCharData(8);
             mRandomPassword = tmpStr;
-            aCache.put(this.Cache_pwd_key, tmpStr);
+            aCache.put(Cache_pwd_key, tmpStr);
         }
 
 
         String srcData = String.format("%s@%s@%s@%s@%s@%s@%s@%s@%s@%s@%s@%s@%s@%s@%s@%s@%s",
-                "200",
+                Configs.APPID,
                 MACUtils.GetTK(),
                 MACUtils.GetKEY(),
                 enStr,
                 time,
                 macStr,
                 Build.MODEL,
-                Tools.getVerCode(this),
+                String.valueOf(Tools.getVerCode(this)),
                 Build.BOARD,
                 Build.BRAND,
                 Build.HARDWARE,
@@ -803,9 +834,8 @@ public class MainActivity extends Activity {
                 Build.ID,
                 MACUtils.getWifiMac(),
                 mRandomPassword);
-//        Log.d("AuthService", srcData);
 
-        Log.d("author","参数src:" + srcData);
+        Log.e("author","参数src:" + srcData);
         String tokenStr = null;
         String RSAKEY = null;
         try {
@@ -816,5 +846,90 @@ public class MainActivity extends Activity {
         } catch (Exception e) {
             e.printStackTrace();
         }
+        tokenStr = AESSecurity.encrypt(srcData, AESKEY);
+
+        //------------------使用OKHttp 请求！！！--------------------------------------
+        OkHttpClient okHttpClient = new OkHttpClient();
+
+        String urlForAuthor = HOST + "/Pvod/Init/init.jsp?appid=" + "200" + "&mac=" + MAC;
+        //MediaType MEDIA_TYPE_MARKDOWN = MediaType.parse("text/x-markdown; charset=utf-8");
+        MultipartBody.Builder requestBody = new MultipartBody.Builder().setType(MultipartBody.FORM);
+        assert RSAKEY != null;
+        requestBody.addFormDataPart("gkey", RSAKEY);
+        requestBody.addFormDataPart("token", tokenStr);
+
+        final Request request = new Request.Builder()
+                .url(urlForAuthor)   // 认证的url
+                .post(requestBody.build())      //参数放在body体里
+                .build();
+
+        Call call = okHttpClient.newCall(request);
+
+        long startTime = System.currentTimeMillis();
+        call.enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                Log.d("okhttp: ", "连接失败"+e.getMessage());
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                long[] endTime = new long[0];
+                //endTime[0] = System.currentTimeMillis();
+                String responseData = response.body().string();
+                AuthInfo mAuthInfo = new Gson().fromJson(responseData, AuthInfo.class);
+                Log.e("onResponse--doAuth","请求成功:");
+                Log.e("onResponse--doAuth","" + response.toString());
+                Log.e("onResponse--doAuth","得到数据: " + responseData);
+                //Log.e("onResponse--doAuth","解密msg: " + Aes_decode(s));
+
+                getAllPrograms();
+            }
+        });
+
     }
+
+    MD_INFO info = null;
+    //获取ip和time
+    public void findFromNet(final boolean flag) {
+        String UrlInfo = HOST + "/Pvod/Init/info.jsp?appid=" + "200" + "&mac=" + MAC + "&l=" + Locale.getDefault().getLanguage() + "&gj=" + Locale.getDefault().getCountry();
+        String infokey = "";
+
+        long startTime = System.currentTimeMillis();
+
+        OkHttpClient okHttpClient1 = new OkHttpClient();
+
+        //MediaType MEDIA_TYPE_MARKDOWN = MediaType.parse("text/x-markdown; charset=utf-8");
+        MultipartBody.Builder requestBody1 = new MultipartBody.Builder().setType(MultipartBody.FORM);
+        final Request request1 = new Request.Builder()
+                .url(UrlInfo)
+                .get()     //参数放在body体里
+                .build();
+
+        Call call1 = okHttpClient1.newCall(request1);
+
+        call1.enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                Log.d("okhttp: ", "连接失败"+e.getMessage());
+            }
+
+            @RequiresApi(api = Build.VERSION_CODES.O)
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                try{
+                    Gson g = new Gson();
+
+                    info = g.fromJson(response.body().string(), MD_INFO.class);
+                    Log.e("获得ip和time","" + info.getT());
+
+                    doAuth(flag, info.t);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+    }
+
+
 }

@@ -6,10 +6,7 @@ import java.util.HashMap;
 
 public class MyDecode {
     public static String Aes_decode(String aesstr) {
-        String t = "1627900441";
-        String ip = "113.90.29.85";
-
-        String key =  ip + t + "qq395585991";
+        String key =  "qq395585991";
 
         String EndKey = MD5Util.getStringMD5_32(key);
         String EedJson = AESSecurity.decrypt(aesstr, EndKey);
