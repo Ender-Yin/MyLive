@@ -24,7 +24,7 @@ public class ModelTV {
         this.list = list;
     }
 
-    public class ListItem {
+    public static class ListItem {
 
         public String dname;
         public String url;
@@ -32,6 +32,7 @@ public class ModelTV {
         public String order;
         public String id;
         public List<String> UrlList;
+        private boolean isPlaying = false;
 
         public List<String> getUrlList() {
             return UrlList;
@@ -79,6 +80,13 @@ public class ModelTV {
 
         public void setId(String id) {
             this.id = id;
+        }
+
+        public boolean isPlaying() {
+            return isPlaying;
+        }
+        public void setPlaying(boolean playing) {
+            isPlaying = playing;
         }
     }
 

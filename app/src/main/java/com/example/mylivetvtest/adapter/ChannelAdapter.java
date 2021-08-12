@@ -1,10 +1,7 @@
 package com.example.mylivetvtest.adapter;
 
-import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
-import android.media.Image;
-import android.os.Build;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -13,13 +10,12 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.RequiresApi;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
 import com.example.mylivetvtest.R;
-import com.example.mylivetvtest.module.ChannelItem;
+import com.example.mylivetvtest.module.ModelTV;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -29,7 +25,7 @@ public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHold
     Intent intent;
 
     //data
-    List<ChannelItem> mData;
+    List<ModelTV.ListItem> mData;
     Context context;
 
 
@@ -37,12 +33,12 @@ public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHold
 
     }
 
-    public ChannelAdapter( Context context, List<ChannelItem> mData){
+    public ChannelAdapter( Context context, List<ModelTV.ListItem> mData){
         this.mData = mData;
         this.context = context;
     }
 
-    public void setData(List<ChannelItem> mData) {
+    public void setData(List<ModelTV.ListItem> mData) {
         this.mData = mData;
     }
     @NonNull
@@ -75,8 +71,12 @@ public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHold
     public void onBindViewHolder( ViewHolder holder, int position) {
         View view= holder.itemView;
         //绑定数组数据 到对应匹配视图
-        holder.mImgPoster.setImageResource(mData.get(position).getPoster());
-        holder.mTextViewTitle.setText(mData.get(position).getTitle());
+        ImageView targetImageView = holder.mImgPoster;
+        String internetUrl = mData.get(position).getIco();
+        Glide.with(context).load(internetUrl).into(targetImageView);
+
+        holder.mTextViewOrder.setText(mData.get(position).getOrder());
+        holder.mTextViewTitle.setText(mData.get(position).getDname());
 
         //设置监听器
         view.setTag(position);
@@ -102,6 +102,7 @@ public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHold
     //ViewHolder类
     public class ViewHolder extends RecyclerView.ViewHolder {
         ImageView mImgPoster;
+        TextView mTextViewOrder;
         TextView mTextViewTitle;
         ImageView mPlayImage;
         //RecyclerView recyclerView;
@@ -109,7 +110,8 @@ public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHold
         public ViewHolder(View itemView) {
             super(itemView);
             mImgPoster = itemView.findViewById(R.id.imageView_channel);
-            mTextViewTitle = itemView.findViewById(R.id.textView_channel);
+            mTextViewOrder = itemView.findViewById(R.id.textView_channel_order);
+            mTextViewTitle = itemView.findViewById(R.id.textView_channel_name);
             mPlayImage = itemView.findViewById(R.id.imageView_playing);
 
             //itemView.setOnFocusChangeListener(ChannelAdapter.this);
