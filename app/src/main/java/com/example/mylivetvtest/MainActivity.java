@@ -27,15 +27,23 @@ import android.widget.VideoView;
 
 import com.example.mylivetvtest.adapter.ChannelAdapter;
 import com.example.mylivetvtest.adapter.FirstCategoryAdapter;
+import com.example.mylivetvtest.keyUtil.MACUtils;
 import com.example.mylivetvtest.module.CategoryItem;
 import com.example.mylivetvtest.module.ModelTV;
 import com.example.mylivetvtest.newWidgt.FocusRecyclerView;
 import com.example.mylivetvtest.widget.TvRecyclerView;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 public class MainActivity extends Activity {
     public static String Cache_pwd_key = "Cache_pwd_key";
@@ -72,9 +80,10 @@ public class MainActivity extends Activity {
     String url1 = "http://ivi.bupt.edu.cn/hls/cctv6hd.m3u8";
     String SAMPLE_URL = "https://vfx.mtime.cn/Video/2019/03/21/mp4/190321153853126488.mp4";
 
-    LinearLayout menu_option;
+    RelativeLayout menu_option;
     LinearLayout window_info;
     TextView textView_window_index;
+    TextView textView_window_dname;
     Button btn_hard;
     Button btn_soft;
 
@@ -84,6 +93,7 @@ public class MainActivity extends Activity {
     //状态变量 合集
     boolean firstFromCateToChannel = false;
     boolean isJieMuVisi = true;
+    boolean isMenuOptVisi = false;
 
     int mLastFocusPositionCategory = 0;
     int mLastFocusPositionChannel = 0;
@@ -97,10 +107,20 @@ public class MainActivity extends Activity {
     int lastPlayingCategory = 0;
     int lastPlayingChannel = 0;
 
-    // tv listf
+    // tv 直播list
     private List<ModelTV> allProgramList=new ArrayList<ModelTV>();      //一级菜单数据列表
     List<ModelTV.ListItem> focusChannelList = new LinkedList<>() ;      //最终二级频道列表
     List<ModelTV.ListItem> tempFocusChannelList = new LinkedList<>() ;      //临时二级频道列表
+    // tv直播 URL 参数
+    OkHttpClient okHttpClient;
+    String strGet = "zlive://192.99.67.80:6678/6d203d3bfbf5038500276a9ea70fda4d";
+    int port = 6677;
+    String uuid = "";
+    String server = "192.99.67.80:6678";
+    String MAC = "";
+    String urlForRegister = "http://127.0.0.1:" + port + "/stream/open?uuid=" + uuid;
+    String urlForLive     = "http://127.0.0.1:" + port + "/stream/live?uuid=" + uuid + "&server=192.99.67.80:6678&group=1&mac=" + MAC;
+    String urlForClose    = "http://127.0.0.1:" + port + "/stream/close?uuid=" + uuid;
 
     private final Handler mHandlerFocusFirst = new Handler(new Handler.Callback() {
         @Override
@@ -145,8 +165,9 @@ public class MainActivity extends Activity {
 
         findViewById(R.id.jiemulan).getBackground().setAlpha(200);          //节目栏设置为透明 只一点
         findViewById(R.id.channel_window_info).getBackground().setAlpha(200);          //节目栏设置为透明 只一点
-        menu_option.getBackground().setAlpha(200);          //节目栏设置为透明 只一点
-        mHandlerFocusFirst.sendEmptyMessageDelayed(UPDATE_FOCUS, 2000);     //打开app一秒后聚焦 第一个
+        //menu_option.getBackground().setAlpha(200);          //节目栏设置为透明 只一点
+        menu_option.setVisibility(View.GONE);
+        mHandlerFocusFirst.sendEmptyMessageDelayed(UPDATE_FOCUS, 1000);     //打开app一秒后聚焦 第一个
         firstRecyclerView.requestFocus();
 
         //showAndHideJiemulan();
@@ -154,6 +175,21 @@ public class MainActivity extends Activity {
     void focusOnFirstCategoryItem(){
         Objects.requireNonNull(firstLinerLayoutManager.findViewByPosition(0)).requestFocus();
         showPlayingImage();         //默认第一个播放图标
+        Thread pressRight = new Thread() {      //调用时该父方法时 都要创建。 因为在再start 主Thread只能一次，
+            public void run() {
+                try {
+                    Instrumentation inst = new Instrumentation();
+                    inst.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_RIGHT);        //press right button
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        };
+        new Handler().postDelayed(new Runnable() {
+            @Override public void run() {
+                pressRight.start();         //模拟点击右键 否则进入界面直接隐藏节目栏 按菜单键无法显示中心菜单。
+            }
+        },50);
     }
     void focusOnPlaying(){
         View view = channelLinearLayoutManager.findViewByPosition(currentPlayingChannel);
@@ -167,11 +203,16 @@ public class MainActivity extends Activity {
 
     @SuppressLint("ResourceType")
     void initialize(){
+        JnaCore.INSTANCE.OnLiveStart(port);
+        okHttpClient = new OkHttpClient();
+
         allProgramList = MyApplication.TvListCache;
 
         menu_option = findViewById(R.id.menu_option_center);
+        menu_option.setVisibility(View.INVISIBLE);
         window_info = findViewById(R.id.channel_window_info);
         textView_window_index = findViewById(R.id.channel_window_info_index);
+        textView_window_dname = findViewById(R.id.channel_window_info_name);
         btn_hard = findViewById(R.id.btn_hard);
         btn_soft = findViewById(R.id.btn_soft);
 
@@ -216,7 +257,10 @@ public class MainActivity extends Activity {
         channelAdapter = new ChannelAdapter(this, focusChannelList);
         channelRecyclerView.setAdapter(channelAdapter);
 
+        updateAndShowChannelWindow();
         Log.e("focusChannelList",focusChannelList.get(currentPlayingChannel).isPlaying()? "yes":"no");
+        MACUtils.initMac(this);
+        MAC = MACUtils.getMac();
     }
     @SuppressLint("ResourceType")
     public void setPlayingState(int position){
@@ -354,17 +398,10 @@ public class MainActivity extends Activity {
                 //记录当前播放的channel和category
                 currentPlayingChannel = channelRecyclerView.getmLastFocusPosition();        // 这里 和 position 的值是一样的
                 currentPlayingCategory = firstRecyclerView.getmLastFocusPosition();
-                updateAndShowWindow();
+                updateAndShowChannelWindow();
                 showPlayingImage();
 
-                //显示列表 自己选择要播放的频道 点击切换频道
-                ModelTV.ListItem channelItem = focusChannelList.get(currentPlayingChannel + 1);
-                List<String> urlList = channelItem.getUrlList();
-                String url = urlList.get(0);
-                if (url != null && currentPlayingChannel != lastPlayingChannel){
-                    stopAndPlay(url);
-                }
-
+                registerAndPlay();
                 //更新
                 lastPlayingChannel = currentPlayingChannel;
                 lastPlayingCategory = currentPlayingCategory;
@@ -398,21 +435,76 @@ public class MainActivity extends Activity {
         videoView.pause();
         videoView.stopPlayback();
         videoView.setVideoURI(Uri.parse(url));
+        Log.e("改变播放源","切换视频" );
         videoView.start();
+    }
+    public void registerAndPlay(){
+        //----关闭上个频道----
+        if(!uuid.equals("")){
+            Request request2 = new Request.Builder()
+                    .url(urlForClose)
+                    .get()     //参数放在body体里
+                    .build();
+            Call call2 = okHttpClient.newCall(request2);
+            call2.enqueue(new Callback() {
+                @Override
+                public void onFailure(Call call, IOException e) {
+                    Log.d("关闭okhttp: ", "连接失败"+e.getMessage());
+                }
+                @RequiresApi(api = Build.VERSION_CODES.O)
+                @Override
+                public void onResponse(Call call, Response response) throws IOException {
+                    Log.e("关闭okhttp", "成功访问 / 关闭频道");
+                }
+            });
+        }
+        //显示列表 自己选择要播放的频道 点击切换频道
+        ModelTV.ListItem channelItem = focusChannelList.get(currentPlayingChannel + 1);     //获得下一个频道 实例信息
+        List<String> urlList = channelItem.getUrlList();
+        String url = urlList.get(0);
+        uuid = url.substring(26);
+        urlForRegister = "http://127.0.0.1:" + port + "/stream/open?uuid=" + uuid;
+        urlForLive     = "http://127.0.0.1:" + port + "/stream/live?uuid=" + uuid + "&server=192.99.67.80:6678&group=1&mac=" + MAC;
+        Log.e("注册地址: ", urlForRegister);
+        Log.e("播放地址: ", urlForLive);
+        //------注册频道------
+        Request request1 = new Request.Builder()
+                .url(urlForRegister)
+                .get()     //参数放在body体里
+                .build();
+        Call call1 = okHttpClient.newCall(request1);
+        call1.enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                Log.e("okhttp: ", "连接失败"+e.getMessage());
+            }
+            @RequiresApi(api = Build.VERSION_CODES.O)
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                Log.e("注册okhttp: ", response.toString());
+                Log.e("注册okhttp: ", "连接成功 / 注册成功");
+                MainActivity.this.runOnUiThread(new Runnable() {        //在主线程中使用！！！
+                    public void run() {
+                        stopAndPlay(urlForLive);
+                    }
+                });
+            }
+        });
+
+        urlForClose    = "http://127.0.0.1:" + port + "/stream/close?uuid=" + uuid;         //更新应该关闭的频道
     }
 
     public void simulateRequestAndClickRightButton(){
-            Thread pressRight = new Thread() {
-                public void run() {
-                    try {
-                        Instrumentation inst = new Instrumentation();
-                        inst.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_RIGHT);        //press right button
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
+        Thread pressRight = new Thread() {
+            public void run() {
+                try {
+                    Instrumentation inst = new Instrumentation();
+                    inst.sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_RIGHT);        //press right button
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
-            };
-
+            }
+        };
         //滚动到播放中category  并选中其
         firstRecyclerView.smoothScrollToPosition(currentPlayingCategory);
         new Handler().postDelayed(new Runnable() {
@@ -464,10 +556,15 @@ public class MainActivity extends Activity {
             Log.e("节目栏： ", "节目栏消失");
         }
     }
+
+    /**
+     * 频道窗口 实时改变index和name
+     */
     @SuppressLint("SetTextI18n")
-    public void updateAndShowWindow(){
+    public void updateAndShowChannelWindow(){
         window_info.setVisibility(View.VISIBLE);
-        textView_window_index.setText("" + (currentPlayingChannel+1));         //小窗设置当前 index
+        textView_window_index.setText("" + (currentPlayingChannel+1));         //小窗设置当前分类下的 index
+        textView_window_dname.setText("" + focusChannelList.get(currentPlayingChannel).getDname());
 
         mHandlerHideOrShow.removeMessages(HIDE_CHANNEL_WINDOW);
         if(window_info.getVisibility() == View.VISIBLE){ mHandlerHideOrShow.sendEmptyMessageDelayed(HIDE_CHANNEL_WINDOW,6000); }    //6秒后隐藏
@@ -479,24 +576,6 @@ public class MainActivity extends Activity {
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event){
         switch (event.getKeyCode()){
-            case KeyEvent.KEYCODE_DPAD_CENTER:
-                Log.e("节目栏显示/按键"," 点下中心按键");
-                if(!isJieMuVisi) {      //节目栏隐藏时 就显示
-                    showJiemulan();
-                    return true;        //消耗了
-                }
-                break;
-            case KeyEvent.KEYCODE_BACK:
-                if(isJieMuVisi) {       //节目栏显示时 就隐藏
-                    hideJiemulan();
-                    return true;
-                }
-                if(menu_option.getVisibility()== View.VISIBLE){
-                    menu_option.setVisibility(View.INVISIBLE);
-                    Log.e("菜单显示/按键"," 隐藏菜单");
-                    return true;
-                }
-                break;
             case KeyEvent.KEYCODE_DPAD_DOWN:        //往小的频道切换
                 if(isJieMuVisi){showAndHideJiemulan();
                     Log.e("节目栏显示/按键"," 点下了下按键");}
@@ -507,16 +586,11 @@ public class MainActivity extends Activity {
                     }
                     if (0 < lastPlayingChannel && lastPlayingChannel <= focusChannelList.size() - 1) {    //到达第一个 ， 不执行
                         //
-                        ModelTV.ListItem channelItem = focusChannelList.get(currentPlayingChannel + 1);
-                        List<String> urlList = channelItem.getUrlList();
-                        String url = urlList.get(0);
-                        if (url != null) {
-                            stopAndPlay(url);
-                        }
+                        registerAndPlay();
 
                         //改变图片
-                        currentPlayingChannel = currentPlayingChannel - 1;                    //向下位移
-                        updateAndShowWindow();
+                        currentPlayingChannel = currentPlayingChannel - 1;                    //向上移动
+                        updateAndShowChannelWindow();
                         showPlayingImage();
                         lastPlayingChannel = currentPlayingChannel;
                     }
@@ -533,16 +607,11 @@ public class MainActivity extends Activity {
                     }
                     if (0 <= lastPlayingChannel && lastPlayingChannel < focusChannelList.size() - 1) {    //最后一个时， 不能再上了
                         //
-                        ModelTV.ListItem channelItem = focusChannelList.get(currentPlayingChannel + 1);
-                        List<String> urlList = channelItem.getUrlList();
-                        String url = urlList.get(0);
-                        if (url != null) {
-                            stopAndPlay(url);
-                        }
+                        registerAndPlay();
 
                         //改变图片
-                        currentPlayingChannel = currentPlayingChannel + 1;                    //向下位移
-                        updateAndShowWindow();
+                        currentPlayingChannel = currentPlayingChannel + 1;                    //向下移动
+                        updateAndShowChannelWindow();
                         showPlayingImage();
                         lastPlayingChannel = currentPlayingChannel;
                     }
@@ -557,15 +626,6 @@ public class MainActivity extends Activity {
                 if(isJieMuVisi){showAndHideJiemulan();
                     Log.e("节目栏显示/按键"," 点下了左按键");}
                 break;
-            case KeyEvent.KEYCODE_MENU:
-                if(!isJieMuVisi){     //当节目栏不可见时 才显示menu
-                    menu_option.setVisibility(View.VISIBLE);
-                    Log.e("节目栏显示/按键"," 点下了菜单按键");
-                    btn_hard.requestFocus();
-
-                    return true;
-                }
-                break;
         }
 
         return super.onKeyDown(keyCode, event);
@@ -576,7 +636,7 @@ public class MainActivity extends Activity {
         switch (event.getKeyCode()){
             case KeyEvent.KEYCODE_DPAD_CENTER:
                 Log.e("节目栏显示/按键"," 点下中心按键");
-                if(!isJieMuVisi) {      //节目栏隐藏时 就显示
+                if(!isJieMuVisi && !isMenuOptVisi) {      //节目栏隐藏时 就显示
                     showJiemulan();
                     return true;        //消耗了
                 }
@@ -587,7 +647,8 @@ public class MainActivity extends Activity {
                     return true;
                 }
                 if(menu_option.getVisibility()== View.VISIBLE){
-                    menu_option.setVisibility(View.INVISIBLE);
+                    menu_option.setVisibility(View.GONE);
+                    isMenuOptVisi = false;
                     Log.e("菜单显示/按键"," 隐藏菜单");
                     return true;
                 }
@@ -595,6 +656,7 @@ public class MainActivity extends Activity {
             case KeyEvent.KEYCODE_MENU:
                 if(!isJieMuVisi){     //当节目栏不可见时 才显示menu
                     menu_option.setVisibility(View.VISIBLE);
+                    isMenuOptVisi = true;
                     Log.e("节目栏显示/按键"," 点下了菜单按键");
                     btn_hard.requestFocus();
 

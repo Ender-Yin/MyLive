@@ -165,14 +165,18 @@ public class AccessActivity extends Activity {
                 ModelTV test = allProgramList.get(0);
 
                 List<ModelTV.ListItem> testTvList = test.getList();
-                ModelTV.ListItem item = testTvList.get(0);
+                ModelTV.ListItem item = testTvList.get(1);
                 List<String> UrlList = item.getUrlList();
                 String url1 = UrlList.get(0);
-                Log.e("节目列表： ", url1);
+                Log.e("节目地址： ", url1);
                 Log.e("类名： ", test.getClassify());
                 Log.e("类名的个数： ", allProgramList.size() + "");
                 Log.e("频道1的图片： ", item.getIco());
                 Log.e("频道1的图片： ", item.isPlaying()?"yes" : "no" );
+
+                //
+                Log.e("节目地址： ", url1.substring(26) + "");
+                Log.e("str长度： ", url1.length() + "");
 
                 for(int i = 0; i < allProgramList.size(); i++) {
                     ModelTV modelTV = allProgramList.get(i);
