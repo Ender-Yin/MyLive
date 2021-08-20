@@ -59,8 +59,29 @@
                     android:textSize="34sp"
                     android:text="TextView" />
             </LinearLayout>
-
         </LinearLayout>
+
+        <RelativeLayout
+            android:id="@+id/window_switch_channel"
+            android:background="@drawable/channel_bg_focus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentRight="true"
+            android:layout_marginTop="30dp"
+            android:layout_marginRight="30dp">
+            <TextView
+                android:id="@+id/textview_window_switch"
+                android:gravity="center"
+                android:layout_width="wrap_content"
+                android:layout_height="135dp"
+                android:textColor="@color/black"
+                android:textSize="100sp"
+                android:text="1"
+                android:lines="1"
+                android:paddingRight="20dp"
+                android:paddingLeft="20dp"
+                />
+        </RelativeLayout>
     </RelativeLayout>
 
     <RelativeLayout
