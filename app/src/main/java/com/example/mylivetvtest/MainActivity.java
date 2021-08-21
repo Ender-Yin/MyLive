@@ -112,7 +112,7 @@ public class MainActivity extends Activity {
 
     // tv 直播list
     private List<ModelTV> allProgramList=new ArrayList<ModelTV>();      //一级菜单数据列表
-    List<ModelTV.ListItem> focusChannelList = new LinkedList<>() ;      //最终二级频道列表
+    List<ModelTV.ListItem> focusChannelList = new LinkedList<>() ;      //最终二级频道列表    即当前聚焦显示的列表
     List<ModelTV.ListItem> lastPlayingChannelList = new LinkedList<>() ;      //临时二级频道列表
     // tv直播 URL 参数
     OkHttpClient okHttpClient;
@@ -126,6 +126,8 @@ public class MainActivity extends Activity {
     String urlForClose    = "http://127.0.0.1:" + port + "/stream/close?uuid=" + uuid;
 
     String strSwitchTv = "";
+    boolean isNumberSwitch = false;     //是否按下数字键切换频道
+    boolean doAscendOrder = true;
 
     private final Handler mHandlerFocusFirst = new Handler(new Handler.Callback() {
         @Override
@@ -166,7 +168,9 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        allProgramList = MyApplication.TvListCache;     //最开始 获得节目列表
 
+        doAscendOrder();
         initialize();
         loadFirstCategories();
         //showAndHideJiemulan();
@@ -174,8 +178,9 @@ public class MainActivity extends Activity {
         findViewById(R.id.jiemulan).getBackground().setAlpha(200);          //节目栏设置为透明 只一点
         findViewById(R.id.channel_window_info).getBackground().setAlpha(200);          //节目栏设置为透明 只一点
         window_switch_channel.getBackground().setAlpha(200);
-        //menu_option.getBackground().setAlpha(200);          //节目栏设置为透明 只一点
+        //menu_option.getBackground().setAlpha(200);          //设置菜单为透明 只一点
         menu_option.setVisibility(View.GONE);
+        window_switch_channel.setVisibility(View.INVISIBLE);
         mHandlerFocusFirst.sendEmptyMessageDelayed(UPDATE_FOCUS, 1000);     //打开app一秒后聚焦 第一个
         firstRecyclerView.requestFocus();
 
@@ -210,13 +215,30 @@ public class MainActivity extends Activity {
         if(isJieMuVisi){ mHandlerHideOrShow.sendEmptyMessageDelayed(HIDE_JIE_MU_LAN,6000); }
     }
 
+    void doAscendOrder(){
+        //遍历节目表 使得各频道order升序
+        //if(doAscendOrder) {     //是否做升序处理
+            int count = 1;
+            ModelTV modelTvTemp;
+            List<ModelTV.ListItem> channelListTemp = new LinkedList<>();      //检索到的二级频道列表
+            ModelTV.ListItem channelItemTemp;
+            for (int i = 0; i < allProgramList.size(); i++) {
+                modelTvTemp = allProgramList.get(i);
+                channelListTemp = modelTvTemp.getList();
+                for (int j = 0; j < channelListTemp.size(); j++) {
+                    channelItemTemp = channelListTemp.get(j);
+                    channelItemTemp.setOrder(String.valueOf(count));
+                    count++;    //计数
+                }
+            }
+        //}
+    }
     @RequiresApi(api = Build.VERSION_CODES.O)
     @SuppressLint("ResourceType")
     void initialize(){
         JnaCore.INSTANCE.OnLiveStart(port);
         okHttpClient = new OkHttpClient();
 
-        allProgramList = MyApplication.TvListCache;
         window_switch_channel = findViewById(R.id.window_switch_channel);
         textview_switchTv = findViewById(R.id.textview_window_switch);
         //switchTv.setAutoSizeTextTypeWithDefaults(TextView.AUTO_SIZE_TEXT_TYPE_UNIFORM);
@@ -336,7 +358,7 @@ public class MainActivity extends Activity {
                         //focusChannelList.get(currentPlayingChannelIndex).setPlaying(true);     //此刻播放的 设置播放图标
                         //channelAdapter.notifyItemChanged(currentPlayingChannelIndex);
 
-                        channelRecyclerView.smoothScrollToPosition(currentPlayingChannelIndex);      //滑动到播放中channel
+                        channelRecyclerView.scrollToPosition(currentPlayingChannelIndex);      //滑动到播放中channel
                         channelRecyclerView.setmLastFocusPosition(currentPlayingChannelIndex);       //设置焦点记忆为 正在播放channel
                     }
                 }else if(!view.hasFocus()){
@@ -412,16 +434,19 @@ public class MainActivity extends Activity {
         channelAdapter.setmOnVideoClickListener(new ChannelAdapter.OnVideosClickListener() {
             @Override
             public void onMyClick(View view, int position) {        //点击频道时触发
+
                 //记录当前要播放的channel和category
                 currentPlayingChannelIndex = channelRecyclerView.getmLastFocusPosition();        // 这里 和 position 的值是一样的， 当前点击和当前聚焦为同一个
                 currentPlayingCategoryIndex = firstRecyclerView.getmLastFocusPosition();
-                updateAndShowChannelWindow();
-                showAndUpdatePlayingImage();
+                if(currentPlayingChannelIndex != lastPlayingChannelIndex) {
+                    updateAndShowChannelWindow();
+                    showAndUpdatePlayingImage();
 
-                registerAndPlay();
-                //更新
-                lastPlayingChannelIndex = currentPlayingChannelIndex;           //其实就是现在播放中 分类与频道
-                lastPlayingCategoryIndex = currentPlayingCategoryIndex;
+                    registerAndPlay();
+                    //更新
+                    lastPlayingChannelIndex = currentPlayingChannelIndex;           //其实就是现在播放中 分类与频道
+                    lastPlayingCategoryIndex = currentPlayingCategoryIndex;
+                }
             }
         });
     }
@@ -525,28 +550,27 @@ public class MainActivity extends Activity {
             }
         };
         //滚动到播放中category  并选中其
-        firstRecyclerView.smoothScrollToPosition(currentPlayingCategoryIndex);
+        firstRecyclerView.scrollToPosition(currentPlayingCategoryIndex);
         new Handler().postDelayed(new Runnable() {
                 @Override public void run() {
                     //0.05秒后聚焦正在播放的category
-                    if (hasChangeChannelForJumpFocus){
+                    if (hasChangeChannelForJumpFocus || isNumberSwitch){
                         firstFromCateToChannel = false;         //使得节目栏显示 聚焦播放中category时 能够切换channel列表
                         firstLinerLayoutManager.findViewByPosition(currentPlayingCategoryIndex).requestFocus();
                         pressRight.start();
+                        //channelLinearLayoutManager.findViewByPosition(currentPlayingChannelIndex).requestFocus();
+
+                        isNumberSwitch = false;
                     }else if(!hasChangeChannelForJumpFocus){
                         channelLinearLayoutManager.findViewByPosition(currentPlayingChannelIndex).requestFocus();
                     }
-                    //firstLinerLayoutManager.findViewByPosition(currentPlayingCategory).requestFocus();
-                    //pressRight.start();
-                    //firstLinerLayoutManager.findViewByPosition(currentPlayingCategory).requestFocus();
-                    //channelLinearLayoutManager.findViewByPosition(currentPlayingChannel).requestFocus();        //直接聚焦channel
                     hasChangeChannelForJumpFocus = false;
                 }
-            },50);
+            },10);
         firstLinerLayoutManager.scrollToPosition(currentPlayingCategoryIndex);
 
         //滚动到播放中channel  模拟右击
-        channelRecyclerView.smoothScrollToPosition(currentPlayingChannelIndex);
+        channelRecyclerView.scrollToPosition(currentPlayingChannelIndex);
         channelLinearLayoutManager.scrollToPosition(currentPlayingChannelIndex);
         channelRecyclerView.setmLastFocusPosition(currentPlayingChannelIndex);       //设置焦点记忆为 播放中channel
     }
@@ -573,6 +597,9 @@ public class MainActivity extends Activity {
             mHandlerHideOrShow.removeMessages(HIDE_JIE_MU_LAN);
             jieMuLan.setVisibility(View.INVISIBLE);     // 所有东西失去焦点
             Log.e("节目栏： ", "节目栏消失");
+
+            //---消失后，当前聚焦显示列表 设置为 当前实际播放中频道列表
+            focusChannelList = allProgramList.get(currentPlayingCategoryIndex).getList();
         }
     }
 
@@ -582,7 +609,7 @@ public class MainActivity extends Activity {
     @SuppressLint("SetTextI18n")
     public void updateAndShowChannelWindow(){
         window_info.setVisibility(View.VISIBLE);
-        textView_window_index.setText("" + (currentPlayingChannelIndex +1));         //小窗设置当前分类下的 index
+        textView_window_index.setText("" + (focusChannelList.get(currentPlayingChannelIndex).getOrder()));         //小窗设置当前分类下的 index
         textView_window_dname.setText("" + focusChannelList.get(currentPlayingChannelIndex).getDname());
 
         mHandlerHideOrShow.removeMessages(HIDE_CHANNEL_WINDOW);
@@ -600,13 +627,13 @@ public class MainActivity extends Activity {
         textview_switchTv.setText(strSwitchTv);
 
         mHandlerHideOrShow.removeMessages(Hide_Switch_Program_Window);
-        if(window_switch_channel.getVisibility() == View.VISIBLE){ mHandlerHideOrShow.sendEmptyMessageDelayed(Hide_Switch_Program_Window,5000); }    //5秒后隐藏
+        if(window_switch_channel.getVisibility() == View.VISIBLE){ mHandlerHideOrShow.sendEmptyMessageDelayed(Hide_Switch_Program_Window,5000); }    //5秒后隐藏 并切换频道
     }
     ModelTV ModelTvTempForSearch;
     List<ModelTV.ListItem> ChannelListTempForSearch = new LinkedList<>() ;      //检索到的二级频道列表
     ModelTV.ListItem ChannelItemTempForSearch;
     List<ModelTV.ListItem> findedChannelList = new LinkedList<>() ;      //检索到的二级频道列表
-    public void hideSwitchProgramWindow(){      //最终停止输入时 检索窗消失时执行
+    public void hideSwitchProgramWindow(){      //最终停止输入时 检索窗消失时执行。 执行切换频道。
         int cateIndex = 0;
         int channelIndex = 0;
         for(int i = 0; i < allProgramList.size(); i++) {
@@ -635,6 +662,7 @@ public class MainActivity extends Activity {
             lastPlayingCategoryIndex = currentPlayingCategoryIndex;
 
             strSwitchTv = "";
+            isNumberSwitch = true;
         }
 
         window_switch_channel.setVisibility(View.INVISIBLE);
