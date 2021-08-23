@@ -18,6 +18,7 @@ import com.example.mylivetvtest.keyUtil.MD5Util;
 import com.example.mylivetvtest.keyUtil.RSACoder;
 import com.example.mylivetvtest.keyUtil.RandomCharData;
 import com.example.mylivetvtest.keyUtil.Tools;
+import com.example.mylivetvtest.keyUtil.ExitUtil;
 import com.example.mylivetvtest.module.MD_INFO;
 import com.example.mylivetvtest.module.ModelTV;
 import com.google.gson.Gson;
@@ -47,6 +48,8 @@ public class AccessActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_access);
+
+        ExitUtil.getInstance().addActivity(this);
 
         intentToMain = new Intent(this,MainActivity.class);
 

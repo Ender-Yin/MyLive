@@ -23,10 +23,10 @@ import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.widget.VideoView;
 
 import com.example.mylivetvtest.adapter.ChannelAdapter;
 import com.example.mylivetvtest.adapter.FirstCategoryAdapter;
+import com.example.mylivetvtest.keyUtil.ExitUtil;
 import com.example.mylivetvtest.keyUtil.MACUtils;
 import com.example.mylivetvtest.module.CategoryItem;
 import com.example.mylivetvtest.module.ModelTV;
@@ -44,6 +44,10 @@ import okhttp3.Callback;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
+import xyz.doikki.videoplayer.ijk.IjkPlayerFactory;
+import xyz.doikki.videoplayer.player.AndroidMediaPlayerFactory;
+import xyz.doikki.videoplayer.player.VideoView;
+import xyz.doikki.videoplayer.util.L;
 
 public class MainActivity extends Activity {
     public static String Cache_pwd_key = "Cache_pwd_key";
@@ -55,6 +59,7 @@ public class MainActivity extends Activity {
     private static final int HIDE_JIE_MU_LAN = 2;
     private static final int HIDE_CHANNEL_WINDOW = 3;
     private static final int Hide_Switch_Program_Window = 4;
+    private static final int UPDATE_TCP_SPEED = 5;
     //一级 分类
     String[] categoryList =  new String[] {"中国大陆","韩国","美国","英国","香港", "偶像","中国大陆","韩国","美国","英国","香港", "偶像",
             "中国大陆","韩国","美国","英国","香港", "偶像","中国大陆","韩国","美国","英国","香港", "偶像"};
@@ -72,23 +77,27 @@ public class MainActivity extends Activity {
     String currentFocusCategory = "";        //当前选择哪个一级分类
 
     //UI
-    RelativeLayout window_switch_channel;
+    RelativeLayout window_number_switch_channel;
     TextView textview_switchTv;
     TextView textView_head_category;
     TextView textView_currentIndex;
     TextView textView_totalCount;
     RelativeLayout jieMuLan;
-    VideoView videoView;
+    xyz.doikki.videoplayer.player.VideoView videoView;
     String url2 = "http://cctvalih5ca.v.myalicdn.com/live/cctv1_2/index.m3u8";
     String url1 = "http://ivi.bupt.edu.cn/hls/cctv6hd.m3u8";
     String SAMPLE_URL = "https://vfx.mtime.cn/Video/2019/03/21/mp4/190321153853126488.mp4";
 
-    RelativeLayout menu_option;
-    LinearLayout window_info;
+    RelativeLayout container_menu_option;
+    LinearLayout window_menu_option;
+    LinearLayout window_channel_info;
     TextView textView_window_index;
     TextView textView_window_dname;
     Button btn_hard;
     Button btn_soft;
+
+    LinearLayout window_speed;
+    TextView textView_speed;
 
     ImageView playingImage;
     RelativeLayout channelRelativeLayout = null;
@@ -157,6 +166,10 @@ public class MainActivity extends Activity {
                 case Hide_Switch_Program_Window:
                     hideSwitchProgramWindow();
                     return true;
+                case UPDATE_TCP_SPEED:
+                    updateTcpSpeed();
+                    mHandlerHideOrShow.sendEmptyMessageDelayed(UPDATE_TCP_SPEED,500);
+                    return true;
             }
             return  false;
         }
@@ -169,20 +182,20 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         allProgramList = MyApplication.TvListCache;     //最开始 获得节目列表
+        ExitUtil.getInstance().addActivity(this);
 
         doAscendOrder();
         initialize();
         loadFirstCategories();
-        //showAndHideJiemulan();
 
         findViewById(R.id.jiemulan).getBackground().setAlpha(200);          //节目栏设置为透明 只一点
-        findViewById(R.id.channel_window_info).getBackground().setAlpha(200);          //节目栏设置为透明 只一点
-        window_switch_channel.getBackground().setAlpha(200);
-        //menu_option.getBackground().setAlpha(200);          //设置菜单为透明 只一点
-        menu_option.setVisibility(View.GONE);
-        window_switch_channel.setVisibility(View.INVISIBLE);
+        findViewById(R.id.window_channel_info).getBackground().setAlpha(200);          //节目栏设置为透明 只一点
+        window_number_switch_channel.getBackground().setAlpha(200);
+        window_menu_option.getBackground().setAlpha(200);          //设置菜单为透明 只一点
+        container_menu_option.setVisibility(View.INVISIBLE);
+        window_number_switch_channel.setVisibility(View.INVISIBLE);
         mHandlerFocusFirst.sendEmptyMessageDelayed(UPDATE_FOCUS, 1000);     //打开app一秒后聚焦 第一个
-        firstRecyclerView.requestFocus();
+        //firstRecyclerView.requestFocus();
 
         //showAndHideJiemulan();
     }
@@ -217,7 +230,7 @@ public class MainActivity extends Activity {
 
     void doAscendOrder(){
         //遍历节目表 使得各频道order升序
-        //if(doAscendOrder) {     //是否做升序处理
+        if(doAscendOrder) {     //是否做升序处理
             int count = 1;
             ModelTV modelTvTemp;
             List<ModelTV.ListItem> channelListTemp = new LinkedList<>();      //检索到的二级频道列表
@@ -231,7 +244,7 @@ public class MainActivity extends Activity {
                     count++;    //计数
                 }
             }
-        //}
+        }
     }
     @RequiresApi(api = Build.VERSION_CODES.O)
     @SuppressLint("ResourceType")
@@ -239,21 +252,26 @@ public class MainActivity extends Activity {
         JnaCore.INSTANCE.OnLiveStart(port);
         okHttpClient = new OkHttpClient();
 
-        window_switch_channel = findViewById(R.id.window_switch_channel);
+        window_number_switch_channel = findViewById(R.id.window_number_switch_channel);
         textview_switchTv = findViewById(R.id.textview_window_switch);
         //switchTv.setAutoSizeTextTypeWithDefaults(TextView.AUTO_SIZE_TEXT_TYPE_UNIFORM);
 
-        //menu_options window相关
-        menu_option = findViewById(R.id.menu_option_center);
-        menu_option.setVisibility(View.INVISIBLE);
-        window_info = findViewById(R.id.channel_window_info);
-        textView_window_index = findViewById(R.id.channel_window_info_index);
-        textView_window_dname = findViewById(R.id.channel_window_info_name);
+        //menu_options / window_channel相关
+        container_menu_option = findViewById(R.id.container_menu_option);
+        window_menu_option = findViewById(R.id.window_menu_option);
         btn_hard = findViewById(R.id.btn_hard);
         btn_soft = findViewById(R.id.btn_soft);
+        window_channel_info = findViewById(R.id.window_channel_info);
+        textView_window_index = findViewById(R.id.channel_window_info_index);
+        textView_window_dname = findViewById(R.id.channel_window_info_name);
+
+        //中间tcp speed窗口
+        window_speed = findViewById(R.id.window_speed);
+        textView_speed = findViewById(R.id.textview_tcpSpeed);
 
         jieMuLan = findViewById(R.id.jiemulan);
 
+        //节目栏 频道栏 头标题
         textView_head_category = findViewById(R.id.textView_head_category);
         textView_currentIndex = findViewById(R.id.textView_current_index);
         textView_totalCount = findViewById(R.id.textView_total_count);
@@ -273,14 +291,27 @@ public class MainActivity extends Activity {
         ((DefaultItemAnimator)channelRecyclerView.getItemAnimator()).setSupportsChangeAnimations(false);        //设置 改变item数据的 不产生闪烁动画
         ((DefaultItemAnimator)firstRecyclerView.getItemAnimator()).setSupportsChangeAnimations(false);        //设置 改变item数据的 不产生闪烁动画
 
-        //默认播放cctv1
+        //默认播放cctv1 播放器相关
         videoView = findViewById(R.id.video_view);
-        videoView.setVideoURI(Uri.parse(url2));
-        videoView.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
-            @Override
-            public void onPrepared(MediaPlayer mp) {
-                videoView.start();
-            }
+        videoView.setUrl(url2);
+        videoView.start();
+        videoView.setOnStateChangeListener(mOnStateChangeListener);
+        videoView.setPlayerFactory(IjkPlayerFactory.create());
+        btn_hard.setOnClickListener(v -> {
+            videoView.pause();
+            videoView.release();
+            videoView.setPlayerFactory(AndroidMediaPlayerFactory.create());     //切换为 自带MediaPlayer
+            videoView.start();
+            btn_soft.setTextColor(R.color.black);
+            btn_hard.setTextColor(R.color.purple_200);
+        });
+        btn_soft.setOnClickListener(v -> {
+            videoView.pause();
+            videoView.release();
+            videoView.setPlayerFactory(IjkPlayerFactory.create());      //切换为 ijkPlayer
+            videoView.start();
+            btn_hard.setTextColor(R.color.black);
+            btn_soft.setTextColor(R.color.purple_200);
         });
 
         //初始化categoryItem
@@ -438,7 +469,7 @@ public class MainActivity extends Activity {
                 //记录当前要播放的channel和category
                 currentPlayingChannelIndex = channelRecyclerView.getmLastFocusPosition();        // 这里 和 position 的值是一样的， 当前点击和当前聚焦为同一个
                 currentPlayingCategoryIndex = firstRecyclerView.getmLastFocusPosition();
-                if(currentPlayingChannelIndex != lastPlayingChannelIndex) {
+                if(currentPlayingCategoryIndex != lastPlayingCategoryIndex || currentPlayingChannelIndex != lastPlayingChannelIndex) {
                     updateAndShowChannelWindow();
                     showAndUpdatePlayingImage();
 
@@ -476,8 +507,8 @@ public class MainActivity extends Activity {
     }
     public void stopAndPlay(String url){
         videoView.pause();
-        videoView.stopPlayback();
-        videoView.setVideoURI(Uri.parse(url));
+        videoView.release();
+        videoView.setUrl(url);
         Log.e("改变播放源","切换视频" );
         videoView.start();
     }
@@ -598,7 +629,7 @@ public class MainActivity extends Activity {
             jieMuLan.setVisibility(View.INVISIBLE);     // 所有东西失去焦点
             Log.e("节目栏： ", "节目栏消失");
 
-            //---消失后，当前聚焦显示列表 设置为 当前实际播放中频道列表
+            //---节目栏消失后， 当前聚焦列表 设为 当前实际播放中频道列表
             focusChannelList = allProgramList.get(currentPlayingCategoryIndex).getList();
         }
     }
@@ -608,26 +639,26 @@ public class MainActivity extends Activity {
      */
     @SuppressLint("SetTextI18n")
     public void updateAndShowChannelWindow(){
-        window_info.setVisibility(View.VISIBLE);
+        window_channel_info.setVisibility(View.VISIBLE);
         textView_window_index.setText("" + (focusChannelList.get(currentPlayingChannelIndex).getOrder()));         //小窗设置当前分类下的 index
         textView_window_dname.setText("" + focusChannelList.get(currentPlayingChannelIndex).getDname());
 
         mHandlerHideOrShow.removeMessages(HIDE_CHANNEL_WINDOW);
-        if(window_info.getVisibility() == View.VISIBLE){ mHandlerHideOrShow.sendEmptyMessageDelayed(HIDE_CHANNEL_WINDOW,6000); }    //6秒后隐藏
+        if(window_channel_info.getVisibility() == View.VISIBLE){ mHandlerHideOrShow.sendEmptyMessageDelayed(HIDE_CHANNEL_WINDOW,6000); }    //6秒后隐藏
     }
     public void hideChannelWindow(){
-        window_info.setVisibility(View.INVISIBLE);
+        window_channel_info.setVisibility(View.INVISIBLE);
     }
 
     /**
      * 显示切换频道窗口 实时改变已经按出的数字
      */
     public void showSwitchProgramWindow(){
-        window_switch_channel.setVisibility(View.VISIBLE);
+        window_number_switch_channel.setVisibility(View.VISIBLE);
         textview_switchTv.setText(strSwitchTv);
 
         mHandlerHideOrShow.removeMessages(Hide_Switch_Program_Window);
-        if(window_switch_channel.getVisibility() == View.VISIBLE){ mHandlerHideOrShow.sendEmptyMessageDelayed(Hide_Switch_Program_Window,5000); }    //5秒后隐藏 并切换频道
+        if(window_number_switch_channel.getVisibility() == View.VISIBLE){ mHandlerHideOrShow.sendEmptyMessageDelayed(Hide_Switch_Program_Window,5000); }    //5秒后隐藏 并切换频道
     }
     ModelTV ModelTvTempForSearch;
     List<ModelTV.ListItem> ChannelListTempForSearch = new LinkedList<>() ;      //检索到的二级频道列表
@@ -665,9 +696,11 @@ public class MainActivity extends Activity {
             isNumberSwitch = true;
         }
 
-        window_switch_channel.setVisibility(View.INVISIBLE);
+        window_number_switch_channel.setVisibility(View.INVISIBLE);
     }
 
+    private long mExitTime;
+    //按键控制
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event){
         switch (event.getKeyCode()){
@@ -720,6 +753,7 @@ public class MainActivity extends Activity {
                 if(isJieMuVisi){showAndHideJiemulan();
                     Log.e("节目栏显示/按键"," 点下了左按键");}
                 break;
+
             case KeyEvent.KEYCODE_0:
                 if(!strSwitchTv.equals("") && strSwitchTv.length()<4){    strSwitchTv += "0";       //当检索频道值不为空 且 位数小于4时才执行
                 Log.e("按键"," 点下了 0 按键");
@@ -771,6 +805,30 @@ public class MainActivity extends Activity {
                 Log.e("按键"," 点下了 9 按键");
                     showSwitchProgramWindow();}
                 break;
+
+            case KeyEvent.KEYCODE_BACK:
+                if(isJieMuVisi) {       //节目栏显示时 就隐藏
+                    hideJiemulan();
+                    return true;
+                }
+                if(container_menu_option.getVisibility()== View.VISIBLE){
+                    container_menu_option.setVisibility(View.GONE);     //一定要GONE 不然会显示不出来
+                    isMenuOptVisi = false;
+                    Log.e("菜单显示/按键"," 隐藏菜单");
+                    return true;
+                }
+                if(!isJieMuVisi && !isMenuOptVisi){     //直接退出app
+                    if ((System.currentTimeMillis() - mExitTime) > 2000) {
+                        Object mHelperUtils;
+                        Toast.makeText(this, "再按一次退出程序", Toast.LENGTH_SHORT).show();
+                        mExitTime = System.currentTimeMillis();
+
+                    } else {
+                        ExitUtil.getInstance().exit();
+                    }
+                    return true;
+                }
+                break;
         }
 
         return super.onKeyDown(keyCode, event);
@@ -786,21 +844,10 @@ public class MainActivity extends Activity {
                     return true;        //消耗了
                 }
                 break;
-            case KeyEvent.KEYCODE_BACK:
-                if(isJieMuVisi) {       //节目栏显示时 就隐藏
-                    hideJiemulan();
-                    return true;
-                }
-                if(menu_option.getVisibility()== View.VISIBLE){
-                    menu_option.setVisibility(View.GONE);
-                    isMenuOptVisi = false;
-                    Log.e("菜单显示/按键"," 隐藏菜单");
-                    return true;
-                }
-                break;
+
             case KeyEvent.KEYCODE_MENU:
                 if(!isJieMuVisi){     //当节目栏不可见时 才显示menu
-                    menu_option.setVisibility(View.VISIBLE);
+                    container_menu_option.setVisibility(View.VISIBLE);
                     isMenuOptVisi = true;
                     Log.e("节目栏显示/按键"," 点下了菜单按键");
                     btn_hard.requestFocus();
@@ -812,4 +859,50 @@ public class MainActivity extends Activity {
 
         return super.dispatchKeyEvent(event);
     }
+
+    @SuppressLint("SetTextI18n")
+    public void updateTcpSpeed(){
+        int speed = (int) (videoView.getTcpSpeed() / 1024);
+        textView_speed.setText(speed + "kb/s");
+    }
+    //状态改变监听 实例
+    private xyz.doikki.videoplayer.player.VideoView.OnStateChangeListener mOnStateChangeListener = new xyz.doikki.videoplayer.player.VideoView.SimpleOnStateChangeListener() {
+        @Override
+        public void onPlayerStateChanged(int playerState) {
+            switch (playerState) {
+                case xyz.doikki.videoplayer.player.VideoView.PLAYER_NORMAL://小屏
+                    break;
+                case xyz.doikki.videoplayer.player.VideoView.PLAYER_FULL_SCREEN://全屏
+                    break;
+            }
+        }
+
+        @Override
+        public void onPlayStateChanged(int playState) {
+            switch (playState) {
+                case xyz.doikki.videoplayer.player.VideoView.STATE_IDLE:
+                    break;
+                case xyz.doikki.videoplayer.player.VideoView.STATE_PREPARING:
+                    window_speed.setVisibility(View.VISIBLE);
+                    mHandlerHideOrShow.sendEmptyMessage(UPDATE_TCP_SPEED);
+                    break;
+                case xyz.doikki.videoplayer.player.VideoView.STATE_PREPARED:
+                    break;
+                case xyz.doikki.videoplayer.player.VideoView.STATE_PLAYING:
+                    window_speed.setVisibility(View.GONE);
+                    mHandlerHideOrShow.removeMessages(UPDATE_TCP_SPEED);
+                    break;
+                case xyz.doikki.videoplayer.player.VideoView.STATE_PAUSED:
+                    break;
+                case xyz.doikki.videoplayer.player.VideoView.STATE_BUFFERING:
+                    break;
+                case xyz.doikki.videoplayer.player.VideoView.STATE_BUFFERED:
+                    break;
+                case xyz.doikki.videoplayer.player.VideoView.STATE_PLAYBACK_COMPLETED:
+                    break;
+                case VideoView.STATE_ERROR:
+                    break;
+            }
+        }
+    };
 }

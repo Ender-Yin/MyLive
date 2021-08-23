@@ -7,19 +7,48 @@
     android:focusable="false"
     tools:context=".MainActivity">
 
-    <VideoView
+    <xyz.doikki.videoplayer.player.VideoView
         android:id="@+id/video_view"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:focusable="false" />
 
     <RelativeLayout
-        android:id="@+id/container_items"
+        android:id="@+id/container_all_window"
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
         <LinearLayout
-            android:id="@+id/channel_window_info"
+            android:focusable="false"
+            android:id="@+id/window_speed"
+            android:layout_height="200dp"
+            android:layout_width="150dp"
+            android:layout_centerInParent="true"
+            android:orientation="vertical">
+            <FrameLayout
+                android:layout_height="150dp"
+                android:layout_width="match_parent">
+                <ProgressBar
+                    android:focusable="false"
+                    android:id="@+id/progressBar"
+                    style="@android:style/Widget.ProgressBar.Large"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:outlineAmbientShadowColor="@color/white"/>
+                <TextView
+                    android:focusable="false"
+                    android:id="@+id/textview_tcpSpeed"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:text="1000kb/s"
+                    android:gravity="center"
+                    android:textSize="20sp"
+                    android:textColor="@color/white"/>
+            </FrameLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/window_channel_info"
             android:layout_width="500dp"
             android:layout_height="100dp"
             android:layout_centerHorizontal="true"
@@ -62,7 +91,7 @@
         </LinearLayout>
 
         <RelativeLayout
-            android:id="@+id/window_switch_channel"
+            android:id="@+id/window_number_switch_channel"
             android:background="@drawable/channel_bg_focus"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -82,6 +111,45 @@
                 android:paddingLeft="20dp"
                 />
         </RelativeLayout>
+
+        <RelativeLayout
+            android:id="@+id/container_menu_option"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <LinearLayout
+                android:id="@+id/window_menu_option"
+                android:layout_width="400dp"
+                android:layout_height="200dp"
+                android:layout_centerInParent="true"
+                android:background="@color/teal_700"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <Button
+                        android:id="@+id/btn_hard"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:background="@drawable/channel_bg"
+                        android:text="硬解 安卓"
+                        android:textSize="40sp" />
+
+                    <Button
+                        android:id="@+id/btn_soft"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:background="@drawable/channel_bg"
+                        android:text="软解 ijk"
+                        android:textSize="40sp" />
+                </LinearLayout>
+            </LinearLayout>
+        </RelativeLayout>
     </RelativeLayout>
 
     <RelativeLayout
@@ -95,7 +163,7 @@
             android:id="@+id/first_recyclerView"
             android:layout_width="200dp"
             android:layout_height="match_parent"
-            android:descendantFocusability="afterDescendants"
+            android:descendantFocusability="beforeDescendants"
             android:focusable="false"
             android:focusableInTouchMode="false"
             android:scrollbarThumbVertical="@drawable/thumb_drawable"
@@ -194,43 +262,6 @@
             android:focusable="false" />
 
 
-    </RelativeLayout>
-
-    <RelativeLayout
-        android:id="@+id/menu_option_center"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent">
-        <LinearLayout
-            android:layout_width="400dp"
-            android:layout_height="200dp"
-            android:layout_centerInParent="true"
-            android:background="@color/teal_200"
-            android:orientation="vertical">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
-
-                <Button
-                    android:id="@+id/btn_hard"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:background="@drawable/channel_bg"
-                    android:text="硬解"
-                    android:textSize="40sp" />
-
-                <Button
-                    android:id="@+id/btn_soft"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:background="@drawable/channel_bg"
-                    android:text="软解"
-                    android:textSize="40sp" />
-            </LinearLayout>
-        </LinearLayout>
     </RelativeLayout>
 
 </FrameLayout>
