@@ -8,6 +8,7 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Instrumentation;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Build;
@@ -138,6 +139,8 @@ public class MainActivity extends Activity {
     boolean isNumberSwitch = false;     //是否按下数字键切换频道
     boolean doAscendOrder = true;
 
+    SharedPreferences sharedPreferences;
+
     private final Handler mHandlerFocusFirst = new Handler(new Handler.Callback() {
         @Override
         public boolean handleMessage(Message msg) {
@@ -183,6 +186,7 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
         allProgramList = MyApplication.TvListCache;     //最开始 获得节目列表
         ExitUtil.getInstance().addActivity(this);
+        sharedPreferences = this.getSharedPreferences("lastInfo",MODE_PRIVATE);   //创建本地偏好
 
         doAscendOrder();
         initialize();
@@ -199,9 +203,16 @@ public class MainActivity extends Activity {
 
         //showAndHideJiemulan();
     }
+
+    @Override
+    protected void onStop() {
+        saveLastChannel();
+        super.onStop();
+    }
+
     void focusOnFirstCategoryItem(){
-        Objects.requireNonNull(firstLinerLayoutManager.findViewByPosition(0)).requestFocus();
-        showAndUpdatePlayingImage();         //默认第一个播放图标
+        firstRecyclerView.scrollToPosition(currentPlayingCategoryIndex);
+        //showAndUpdatePlayingImage();         //默认第一个播放图标
         Thread pressRight = new Thread() {      //调用时该父方法时 都要创建。 因为在再start 主Thread只能一次，
             public void run() {
                 try {
@@ -214,6 +225,7 @@ public class MainActivity extends Activity {
         };
         new Handler().postDelayed(new Runnable() {
             @Override public void run() {
+                Objects.requireNonNull(firstLinerLayoutManager.findViewByPosition(currentPlayingCategoryIndex)).requestFocus();
                 pressRight.start();         //模拟点击右键 否则进入界面直接隐藏节目栏 按菜单键无法显示中心菜单。
             }
         },50);
@@ -249,6 +261,7 @@ public class MainActivity extends Activity {
     @RequiresApi(api = Build.VERSION_CODES.O)
     @SuppressLint("ResourceType")
     void initialize(){
+
         JnaCore.INSTANCE.OnLiveStart(port);
         okHttpClient = new OkHttpClient();
 
@@ -260,12 +273,13 @@ public class MainActivity extends Activity {
         container_menu_option = findViewById(R.id.container_menu_option);
         window_menu_option = findViewById(R.id.window_menu_option);
         btn_hard = findViewById(R.id.btn_hard);
+
         btn_soft = findViewById(R.id.btn_soft);
         window_channel_info = findViewById(R.id.window_channel_info);
         textView_window_index = findViewById(R.id.channel_window_info_index);
         textView_window_dname = findViewById(R.id.channel_window_info_name);
 
-        //中间tcp speed窗口
+        //中间tcp speed/loading窗口
         window_speed = findViewById(R.id.window_speed);
         textView_speed = findViewById(R.id.textview_tcpSpeed);
 
@@ -293,40 +307,35 @@ public class MainActivity extends Activity {
 
         //默认播放cctv1 播放器相关
         videoView = findViewById(R.id.video_view);
-        videoView.setUrl(url2);
-        videoView.start();
-        videoView.setOnStateChangeListener(mOnStateChangeListener);
+        videoView.setOnStateChangeListener(mOnStateChangeListener);     //设置状态监听
         videoView.setPlayerFactory(IjkPlayerFactory.create());
         btn_hard.setOnClickListener(v -> {
             videoView.pause();
             videoView.release();
             videoView.setPlayerFactory(AndroidMediaPlayerFactory.create());     //切换为 自带MediaPlayer
             videoView.start();
-            btn_soft.setTextColor(R.color.black);
-            btn_hard.setTextColor(R.color.purple_200);
+            btn_soft.setTextColor(R.color.white);
+            btn_hard.setTextColor(android.R.color.holo_red_dark);
         });
         btn_soft.setOnClickListener(v -> {
             videoView.pause();
             videoView.release();
             videoView.setPlayerFactory(IjkPlayerFactory.create());      //切换为 ijkPlayer
             videoView.start();
-            btn_hard.setTextColor(R.color.black);
-            btn_soft.setTextColor(R.color.purple_200);
+            btn_hard.setTextColor(R.color.white);
+            btn_soft.setTextColor(android.R.color.holo_red_dark);
         });
-
-        //初始化categoryItem
+        //初始化categoryItems
         for(int i = 0; i < allProgramList.size(); i++) {
             ModelTV modelTV = allProgramList.get(i);
             categoryItemList.add(new CategoryItem(modelTV.getClassify()));
         }
-
-        focusChannelList = allProgramList.get(0).getList();
-        lastPlayingChannelList = allProgramList.get(0).getList();       //打开app默认播放 第一个
+        focusChannelList = allProgramList.get(currentPlayingCategoryIndex).getList();       //初始化频道列表
+        lastPlayingChannelList = allProgramList.get(lastPlayingCategoryIndex).getList();
         channelAdapter = new ChannelAdapter(this, focusChannelList);
         channelRecyclerView.setAdapter(channelAdapter);
 
-        updateAndShowChannelWindow();
-        Log.e("focusChannelList",focusChannelList.get(currentPlayingChannelIndex).isPlaying()? "yes":"no");
+        //Log.e("focusChannelList",focusChannelList.get(currentPlayingChannelIndex).isPlaying()? "yes":"no");
         MACUtils.initMac(this);
         MAC = MACUtils.getMac();
     }
@@ -341,6 +350,7 @@ public class MainActivity extends Activity {
         firstCategoryAdapter = new FirstCategoryAdapter(this, categoryItemList);
         firstRecyclerView.setAdapter(firstCategoryAdapter);
 
+        loadLastChannel();
         //-------------------CategoryRecyclerView父视图失去焦点 和 获得焦点 事件监听------------------
         firstRecyclerView.setGainFocusListener((child, focus) -> {
             if(isJieMuVisi) {        // 界面显示时， 聚焦Category才可以设为不透明/原初背景
@@ -378,20 +388,17 @@ public class MainActivity extends Activity {
                         Log.i("Category Item聚焦","刷新adapter");
                         hasChangeChannelForJumpFocus = true;
                     }
-                }
-                if (view.hasFocus()){
-                    hasChangeChannelForJumpFocus = true;        //切换categories焦点
-                    firstFromCateToChannel = false;     //获得焦点后， 可以在切换一级列表焦点时 刷新adapter
-                    Log.i("Category Item聚焦","cate获焦，可以刷新channel列表");
-
-                    //当前聚焦category为 播放中category时， 使得当前播放channel获得播放图标。
+                    //若当前聚焦category为 播放中category时， 使得当前播放channel获得播放图标。 且焦点记忆也设置为其
                     if(position == currentPlayingCategoryIndex){
-                        //focusChannelList.get(currentPlayingChannelIndex).setPlaying(true);     //此刻播放的 设置播放图标
-                        //channelAdapter.notifyItemChanged(currentPlayingChannelIndex);
-
                         channelRecyclerView.scrollToPosition(currentPlayingChannelIndex);      //滑动到播放中channel
                         channelRecyclerView.setmLastFocusPosition(currentPlayingChannelIndex);       //设置焦点记忆为 正在播放channel
                     }
+                }
+                if (view.hasFocus()){
+                    hasChangeChannelForJumpFocus = true;        //切换categories焦点
+                    firstFromCateToChannel = false;     //一级列表获得焦点后， 可以在切换一级列表焦点时 刷新adapter
+                    Log.i("Category Item聚焦","cate获焦，可以刷新channel列表");
+
                 }else if(!view.hasFocus()){
                     Log.i("Category Item聚焦","cate失去焦点");
                     if (firstRecyclerView.isComputingLayout()) {
@@ -425,6 +432,37 @@ public class MainActivity extends Activity {
         });
 
         View mFocused = channelRecyclerView.findFocus();
+    }
+
+    /**
+     * 加载上次观看的频道
+     */
+    void loadLastChannel(){
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        //if(!sharedPreferences.getString("lastPlayingChannelIndex", "-1").equals("-1")){     //不为空
+            currentPlayingChannelIndex = Integer.parseInt(sharedPreferences.getString("lastPlayingChannelIndex", "0"));        // 这里 和 position 的值是一样的， 当前点击和当前聚焦为同一个
+            currentPlayingCategoryIndex = Integer.parseInt(sharedPreferences.getString("lastPlayingCategoryIndex", "0"));
+       // }
+        focusChannelList = allProgramList.get(currentPlayingCategoryIndex).getList();       //初始化频道列表
+        lastPlayingChannelList = allProgramList.get(lastPlayingCategoryIndex).getList();       //打开app默认播放 第一个
+        channelAdapter = new ChannelAdapter(this, focusChannelList);
+        channelRecyclerView.setAdapter(channelAdapter);
+
+        Log.e("加载上次储存",currentPlayingChannelIndex + "");
+        updateAndShowChannelWindow();
+        showAndUpdatePlayingImage();
+        registerAndPlay();
+        //更新
+        lastPlayingChannelIndex = currentPlayingChannelIndex;           //其实就是现在播放中 分类与频道
+        lastPlayingCategoryIndex = currentPlayingCategoryIndex;
+
+    }
+    void saveLastChannel(){
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putString("lastPlayingCategoryIndex", String.valueOf(currentPlayingCategoryIndex));
+        editor.putString("lastPlayingChannelIndex", String.valueOf(currentPlayingChannelIndex));
+        editor.apply();
+        Log.e("储存当前播放",currentPlayingChannelIndex + "");
     }
 
     void initData(int position){
@@ -536,7 +574,7 @@ public class MainActivity extends Activity {
         ModelTV.ListItem channelItem = focusChannelList.get(currentPlayingChannelIndex);     //-----关键--------获得新的频道 实例信息-------------
         List<String> urlList = channelItem.getUrlList();
         String url = urlList.get(0);
-        uuid = url.substring(26);
+        uuid = url.substring(26);       //获取频道id
         urlForRegister = "http://127.0.0.1:" + port + "/stream/open?uuid=" + uuid;
         urlForLive     = "http://127.0.0.1:" + port + "/stream/live?uuid=" + uuid + "&server=192.99.67.80:6678&group=1&mac=" + MAC;
         Log.e("注册地址: ", urlForRegister);
@@ -565,11 +603,13 @@ public class MainActivity extends Activity {
                 });
             }
         });
+        saveLastChannel();
 
         urlForClose    = "http://127.0.0.1:" + port + "/stream/close?uuid=" + uuid;         //更新应该关闭的频道
     }
 
     public void simulateRequestAndClickRightButton(){
+        Log.e("显示节目栏 模拟","");
         Thread pressRight = new Thread() {
             public void run() {
                 try {
@@ -818,9 +858,9 @@ public class MainActivity extends Activity {
                     return true;
                 }
                 if(!isJieMuVisi && !isMenuOptVisi){     //直接退出app
-                    if ((System.currentTimeMillis() - mExitTime) > 2000) {
+                    if ((System.currentTimeMillis() - mExitTime) > 2000) {      //2s内 连按返回退出
                         Object mHelperUtils;
-                        Toast.makeText(this, "再按一次退出程序", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, "再按一次退出", Toast.LENGTH_SHORT).show();
                         mExitTime = System.currentTimeMillis();
 
                     } else {
@@ -866,7 +906,7 @@ public class MainActivity extends Activity {
         textView_speed.setText(speed + "kb/s");
     }
     //状态改变监听 实例
-    private xyz.doikki.videoplayer.player.VideoView.OnStateChangeListener mOnStateChangeListener = new xyz.doikki.videoplayer.player.VideoView.SimpleOnStateChangeListener() {
+    private final xyz.doikki.videoplayer.player.VideoView.OnStateChangeListener mOnStateChangeListener = new xyz.doikki.videoplayer.player.VideoView.SimpleOnStateChangeListener() {
         @Override
         public void onPlayerStateChanged(int playerState) {
             switch (playerState) {

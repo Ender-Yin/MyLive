@@ -137,7 +137,8 @@
                         android:layout_weight="1"
                         android:background="@drawable/channel_bg"
                         android:text="硬解 安卓"
-                        android:textSize="40sp" />
+                        android:textSize="40sp"
+                        android:textColor="@android:color/white"/>
 
                     <Button
                         android:id="@+id/btn_soft"
@@ -146,7 +147,8 @@
                         android:layout_weight="1"
                         android:background="@drawable/channel_bg"
                         android:text="软解 ijk"
-                        android:textSize="40sp" />
+                        android:textSize="40sp"
+                        android:textColor="@color/white"/>
                 </LinearLayout>
             </LinearLayout>
         </RelativeLayout>

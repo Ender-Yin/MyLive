@@ -58,7 +58,7 @@ public class AccessActivity extends Activity {
         MAC = MACUtils.getMac();
         Log.e("MAC",MAC);
         Log.e("wifiMAC",MACUtils.getWifiMac());
-        findFromNet(true);
+        getIPAndT(true);
 
 
 
@@ -67,7 +67,7 @@ public class AccessActivity extends Activity {
     private List<ModelTV> allProgramList=new ArrayList<ModelTV>();//一级菜单数据列表
     String HOST = "http://vodlist.maoq.pw";
     String MAC = "";
-    //--------------------------------获取节目列表相关--------------------------------------
+    //--------------------------------获取节目列表相关------3--------------------------------
     @RequiresApi(api = Build.VERSION_CODES.O)
     public void getAllPrograms() {
         String key = "1234567891234567";
@@ -194,7 +194,7 @@ public class AccessActivity extends Activity {
             }
         });
 
-        //------------------使用OKHttp 请求！！！  2  获得ip和t  --------------------------------------
+        //------------------使用OKHttp 请求！！！  2  获得ip和t  / 没有必要--------------------------------------
         String t = "1627900441";
         String ip = "113.90.29.85";
         String dataFrom= "{\"t\":1627900441,\"c\":\"CN\",\"ip\":\"113.90.29.85\",\"key\":\"9936669a73ed775ee05d5376538c6665\",\"test\":\"e6ea33596a890b0c8e9868e27c0c9d0f\"}";
@@ -211,7 +211,7 @@ public class AccessActivity extends Activity {
 
         Call call1 = okHttpClient1.newCall(request1);
 
-        call1.enqueue(new Callback() {
+        /*call1.enqueue(new Callback() {
             @Override
             public void onFailure(Call call, IOException e) {
                 Log.d("okhttp: ", "连接失败"+e.getMessage());
@@ -222,7 +222,7 @@ public class AccessActivity extends Activity {
                 ipAndT[0] = response.body().string();
                 Log.e("获得的数据： ",ipAndT[0]);
             }
-        });
+        });*/
 
         //----------------------------------认证部分-------------------------------------------
         String urlForAuthor = HOST + "/Pvod/Init/init.jsp?appid=" + "200" + "&mac=" + MAC;
@@ -262,6 +262,7 @@ public class AccessActivity extends Activity {
         return re;
     }
 
+    // -------------2-----------------
     @RequiresApi(api = Build.VERSION_CODES.O)
     public void doAuth(final boolean flag, int time) {
         //FinalHttp finalHttp = new FinalHttp();
@@ -358,8 +359,8 @@ public class AccessActivity extends Activity {
     }
 
     MD_INFO info = null;
-    //获取ip和time
-    public void findFromNet(final boolean flag) {
+    //获取ip和time              ------1------
+    public void getIPAndT(final boolean flag) {
         String UrlInfo = HOST + "/Pvod/Init/info.jsp?appid=" + "200" + "&mac=" + MAC + "&l=" + Locale.getDefault().getLanguage() + "&gj=" + Locale.getDefault().getCountry();
         String infokey = "";
 
