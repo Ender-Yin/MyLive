@@ -9,4 +9,6 @@
     <color name="white">#FFFFFFFF</color>
     <color name="bg_grey">#888888</color>
     <color name="myBlue">#3C77F1</color>
+    <color name="yellow">#FFDD00</color>
+    <color name="light">#00ACC1</color>
 </resources>

@@ -94,8 +94,8 @@ public class MainActivity extends Activity {
     LinearLayout window_channel_info;
     TextView textView_window_index;
     TextView textView_window_dname;
-    Button btn_hard;
-    Button btn_soft;
+    TextView btn_hard;
+    TextView btn_soft;
 
     LinearLayout window_speed;
     TextView textView_speed;
@@ -186,10 +186,11 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
         allProgramList = MyApplication.TvListCache;     //最开始 获得节目列表
         ExitUtil.getInstance().addActivity(this);
-        sharedPreferences = this.getSharedPreferences("lastInfo",MODE_PRIVATE);   //创建本地偏好
+        sharedPreferences = this.getSharedPreferences("lastInfo",MODE_PRIVATE);   //创建本地偏好 文件名为 "lastInfo"
 
         doAscendOrder();
         initialize();
+        setStateListener();
         loadFirstCategories();
 
         findViewById(R.id.jiemulan).getBackground().setAlpha(200);          //节目栏设置为透明 只一点
@@ -273,8 +274,8 @@ public class MainActivity extends Activity {
         container_menu_option = findViewById(R.id.container_menu_option);
         window_menu_option = findViewById(R.id.window_menu_option);
         btn_hard = findViewById(R.id.btn_hard);
-
         btn_soft = findViewById(R.id.btn_soft);
+        btn_soft.setTextColor(this.getResources().getColor(android.R.color.holo_orange_light));
         window_channel_info = findViewById(R.id.window_channel_info);
         textView_window_index = findViewById(R.id.channel_window_info_index);
         textView_window_dname = findViewById(R.id.channel_window_info_name);
@@ -309,22 +310,7 @@ public class MainActivity extends Activity {
         videoView = findViewById(R.id.video_view);
         videoView.setOnStateChangeListener(mOnStateChangeListener);     //设置状态监听
         videoView.setPlayerFactory(IjkPlayerFactory.create());
-        btn_hard.setOnClickListener(v -> {
-            videoView.pause();
-            videoView.release();
-            videoView.setPlayerFactory(AndroidMediaPlayerFactory.create());     //切换为 自带MediaPlayer
-            videoView.start();
-            btn_soft.setTextColor(R.color.white);
-            btn_hard.setTextColor(android.R.color.holo_red_dark);
-        });
-        btn_soft.setOnClickListener(v -> {
-            videoView.pause();
-            videoView.release();
-            videoView.setPlayerFactory(IjkPlayerFactory.create());      //切换为 ijkPlayer
-            videoView.start();
-            btn_hard.setTextColor(R.color.white);
-            btn_soft.setTextColor(android.R.color.holo_red_dark);
-        });
+
         //初始化categoryItems
         for(int i = 0; i < allProgramList.size(); i++) {
             ModelTV modelTV = allProgramList.get(i);
@@ -339,6 +325,25 @@ public class MainActivity extends Activity {
         MACUtils.initMac(this);
         MAC = MACUtils.getMac();
     }
+    void setStateListener(){
+        btn_hard.setOnClickListener(v -> {
+            videoView.pause();
+            videoView.release();
+            videoView.setPlayerFactory(AndroidMediaPlayerFactory.create());     //切换为 自带MediaPlayer
+            videoView.start();
+            btn_hard.setTextColor(this.getResources().getColor(android.R.color.holo_orange_light));
+            btn_soft.setTextColor(this.getResources().getColor(R.color.black));
+        });
+        btn_soft.setOnClickListener(v -> {
+            videoView.pause();
+            videoView.release();
+            videoView.setPlayerFactory(IjkPlayerFactory.create());      //切换为 ijkPlayer
+            videoView.start();
+            //btn_soft.setTextColor(R.color.light);
+            btn_soft.setTextColor(this.getResources().getColor(android.R.color.holo_orange_light));
+            btn_hard.setTextColor(this.getResources().getColor(R.color.black));
+        });
+    }
     @SuppressLint("ResourceType")
     public void setPlayingState(int position){
         ChannelAdapter.ViewHolder viewHolder = (ChannelAdapter.ViewHolder)
@@ -352,11 +357,11 @@ public class MainActivity extends Activity {
 
         loadLastChannel();
         //-------------------CategoryRecyclerView父视图失去焦点 和 获得焦点 事件监听------------------
-        firstRecyclerView.setGainFocusListener((child, focus) -> {
-            if(isJieMuVisi) {        // 界面显示时， 聚焦Category才可以设为不透明/原初背景
-                Log.i("category列表", "category获取焦点 变不透明");
+        firstRecyclerView.setGainFocusListener((child, focus) -> {      // 列表获取焦点时执行
+            //if(isJieMuVisi) {        // 界面显示时， 聚焦Category才可以设为不透明/原初背景
+                Log.e("category列表", "category获取焦点 变正常背景");
                 firstCategoryAdapter.notifyItemChanged(firstRecyclerView.getmLastFocusPosition(),1);        //设置上此聚焦category为正常
-            }
+            //}
         });
         firstRecyclerView.setFocusLostListener((lastFocusChild, direction) -> {         //这里是只有当按键往左右时 焦点移出时 才会调用。其他方式失去焦点不会触发。
             firstFromCateToChannel = true;     //移出category列表时 设为category获得焦点时不改变刷新adapter
@@ -623,22 +628,24 @@ public class MainActivity extends Activity {
         //滚动到播放中category  并选中其
         firstRecyclerView.scrollToPosition(currentPlayingCategoryIndex);
         new Handler().postDelayed(new Runnable() {
-                @Override public void run() {
-                    //0.05秒后聚焦正在播放的category
-                    if (hasChangeChannelForJumpFocus || isNumberSwitch){
-                        firstFromCateToChannel = false;         //使得节目栏显示 聚焦播放中category时 能够切换channel列表
-                        firstLinerLayoutManager.findViewByPosition(currentPlayingCategoryIndex).requestFocus();
-                        pressRight.start();
-                        //channelLinearLayoutManager.findViewByPosition(currentPlayingChannelIndex).requestFocus();
+            @Override
+            public void run() {
+                //0.05秒后聚焦正在播放的category
+                if (hasChangeChannelForJumpFocus || isNumberSwitch) {
+                    firstFromCateToChannel = false;         //使得节目栏显示 聚焦播放中category时 能够切换channel列表
+                    firstLinerLayoutManager.findViewByPosition(currentPlayingCategoryIndex).requestFocus();
+                    pressRight.start();
+                    //channelLinearLayoutManager.findViewByPosition(currentPlayingChannelIndex).requestFocus();
 
-                        isNumberSwitch = false;
-                    }else if(!hasChangeChannelForJumpFocus){
-                        channelLinearLayoutManager.findViewByPosition(currentPlayingChannelIndex).requestFocus();
-                    }
-                    hasChangeChannelForJumpFocus = false;
+                    isNumberSwitch = false;
+                } else if (!hasChangeChannelForJumpFocus) {
+                    channelLinearLayoutManager.findViewByPosition(currentPlayingChannelIndex).requestFocus();
                 }
-            },10);
+                hasChangeChannelForJumpFocus = false;
+            }
+        }, 10);
         firstLinerLayoutManager.scrollToPosition(currentPlayingCategoryIndex);
+        firstCategoryAdapter.notifyItemChanged(currentPlayingCategoryIndex, 0);     //直接设置为 透明状态背景
 
         //滚动到播放中channel  模拟右击
         channelRecyclerView.scrollToPosition(currentPlayingChannelIndex);
@@ -698,7 +705,7 @@ public class MainActivity extends Activity {
         textview_switchTv.setText(strSwitchTv);
 
         mHandlerHideOrShow.removeMessages(Hide_Switch_Program_Window);
-        if(window_number_switch_channel.getVisibility() == View.VISIBLE){ mHandlerHideOrShow.sendEmptyMessageDelayed(Hide_Switch_Program_Window,5000); }    //5秒后隐藏 并切换频道
+        if(window_number_switch_channel.getVisibility() == View.VISIBLE){ mHandlerHideOrShow.sendEmptyMessageDelayed(Hide_Switch_Program_Window,3000); }    //5秒后隐藏 并切换频道
     }
     ModelTV ModelTvTempForSearch;
     List<ModelTV.ListItem> ChannelListTempForSearch = new LinkedList<>() ;      //检索到的二级频道列表
@@ -747,7 +754,7 @@ public class MainActivity extends Activity {
             case KeyEvent.KEYCODE_DPAD_DOWN:        //往小的频道切换
                 if(isJieMuVisi){showAndHideJiemulan();
                     Log.e("节目栏显示/按键"," 点下了下按键");}
-                if(!isJieMuVisi) {       //界面隐藏时执行
+                if(!isJieMuVisi && !isMenuOptVisi) {       //界面隐藏时执行
                     Log.e("节目栏隐藏/按键"," 点下了下按键");
                     if (lastPlayingChannelIndex == 0){
                         Toast.makeText(this, "到底了" , Toast.LENGTH_SHORT).show();
@@ -767,7 +774,7 @@ public class MainActivity extends Activity {
             case KeyEvent.KEYCODE_DPAD_UP:        //往大的频道切换
                 if(isJieMuVisi){showAndHideJiemulan();
                     Log.e("节目栏显示/按键"," 点下了上按键");}
-                if(!isJieMuVisi) {       //节目栏隐藏时执行
+                if(!isJieMuVisi && !isMenuOptVisi) {       //节目栏隐藏时执行
                     Log.e("节目栏隐藏/按键"," 点下了上按键");
                     if (lastPlayingChannelIndex == focusChannelList.size() - 1){
                         Toast.makeText(this, "到底了" , Toast.LENGTH_SHORT).show();
@@ -848,6 +855,7 @@ public class MainActivity extends Activity {
 
             case KeyEvent.KEYCODE_BACK:
                 if(isJieMuVisi) {       //节目栏显示时 就隐藏
+                    firstCategoryAdapter.notifyItemChanged(firstRecyclerView.getmLastFocusPosition(),1);        //设置上此聚焦category为正常
                     hideJiemulan();
                     return true;
                 }
