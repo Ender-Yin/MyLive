@@ -102,6 +102,7 @@ public class FocusRecyclerView extends RecyclerView {
                         if (!isRecyclerViewToBottom()) {
                             needGetDownView = true;
                         }
+                        //this.scrollBy(0, offsetY);
                         this.smoothScrollBy(0, offsetY);
                         return true;
                     }
@@ -118,6 +119,7 @@ public class FocusRecyclerView extends RecyclerView {
                         if (!isRecyclerViewToTop()) {
                             needGetUpView = true;
                         }
+                        //this.scrollBy(0, -offsetY);
                         this.smoothScrollBy(0, -offsetY);
                         return true;
                     }

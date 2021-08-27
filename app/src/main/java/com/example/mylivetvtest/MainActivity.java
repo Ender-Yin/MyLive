@@ -7,8 +7,11 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.Instrumentation;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.database.Cursor;
+import android.database.sqlite.SQLiteDatabase;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Build;
@@ -30,6 +33,7 @@ import com.example.mylivetvtest.adapter.FirstCategoryAdapter;
 import com.example.mylivetvtest.keyUtil.ExitUtil;
 import com.example.mylivetvtest.keyUtil.MACUtils;
 import com.example.mylivetvtest.module.CategoryItem;
+import com.example.mylivetvtest.module.CollectorDBOpenHelper;
 import com.example.mylivetvtest.module.ModelTV;
 import com.example.mylivetvtest.newWidgt.FocusRecyclerView;
 import com.example.mylivetvtest.widget.TvRecyclerView;
@@ -107,12 +111,16 @@ public class MainActivity extends Activity {
     boolean firstFromCateToChannel = false;
     boolean isJieMuVisi = true;
     boolean isMenuOptVisi = false;
+    boolean isCollectorListVisi = false;
 
     int mLastFocusPositionCategory = 0;
     int mLastFocusPositionChannel = 0;
     int countChangeFocusPos = 0;
     int mFinalFocusLastPosCate = 0;
     int mFinalFocusLastPosChan = 0;
+    int currentFocusCategoryIndex = 0;
+    int currentFocusChannelIndex = 0;
+
 
     int currentPlayingCategoryIndex = 0;
     int currentPlayingChannelIndex = 0;
@@ -134,12 +142,21 @@ public class MainActivity extends Activity {
     String urlForRegister = "http://127.0.0.1:" + port + "/stream/open?uuid=" + uuid;
     String urlForLive     = "http://127.0.0.1:" + port + "/stream/live?uuid=" + uuid + "&server=192.99.67.80:6678&group=1&mac=" + MAC;
     String urlForClose    = "http://127.0.0.1:" + port + "/stream/close?uuid=" + uuid;
-
+    //数字切换频道相关
     String strSwitchTv = "";
     boolean isNumberSwitch = false;     //是否按下数字键切换频道
     boolean doAscendOrder = true;
 
-    SharedPreferences sharedPreferences;
+    SharedPreferences sharedPreferences;       //本地偏好储存
+
+    //收藏频道相关
+    RelativeLayout container_collector;
+    FocusRecyclerView collect_recyclerview;
+    ChannelAdapter collectChannelAdapter;
+    LinearLayoutManager collectLinearLayoutManager;
+    List<ModelTV.ListItem> collectorChannelList = new LinkedList<>() ;      //收藏的频道列表 打开app时加载
+    CollectorDBOpenHelper collectorDBOpenHelper;
+    private SQLiteDatabase db;
 
     private final Handler mHandlerFocusFirst = new Handler(new Handler.Callback() {
         @Override
@@ -191,12 +208,14 @@ public class MainActivity extends Activity {
         doAscendOrder();
         initialize();
         setStateListener();
+        loadCollectorList();
         loadFirstCategories();
 
         findViewById(R.id.jiemulan).getBackground().setAlpha(200);          //节目栏设置为透明 只一点
         findViewById(R.id.window_channel_info).getBackground().setAlpha(200);          //节目栏设置为透明 只一点
         window_number_switch_channel.getBackground().setAlpha(200);
         window_menu_option.getBackground().setAlpha(200);          //设置菜单为透明 只一点
+        container_collector.getBackground().setAlpha(200);          //设置菜单为透明 只一点
         container_menu_option.setVisibility(View.INVISIBLE);
         window_number_switch_channel.setVisibility(View.INVISIBLE);
         mHandlerFocusFirst.sendEmptyMessageDelayed(UPDATE_FOCUS, 1000);     //打开app一秒后聚焦 第一个
@@ -204,13 +223,11 @@ public class MainActivity extends Activity {
 
         //showAndHideJiemulan();
     }
-
     @Override
     protected void onStop() {
         saveLastChannel();
         super.onStop();
     }
-
     void focusOnFirstCategoryItem(){
         firstRecyclerView.scrollToPosition(currentPlayingCategoryIndex);
         //showAndUpdatePlayingImage();         //默认第一个播放图标
@@ -324,6 +341,18 @@ public class MainActivity extends Activity {
         //Log.e("focusChannelList",focusChannelList.get(currentPlayingChannelIndex).isPlaying()? "yes":"no");
         MACUtils.initMac(this);
         MAC = MACUtils.getMac();
+
+        //收藏频道相关
+        collect_recyclerview = findViewById(R.id.collect_recyclerview);
+        collectLinearLayoutManager = new LinearLayoutManager(this);
+        collectLinearLayoutManager.setOrientation(LinearLayoutManager.VERTICAL);
+        collect_recyclerview.setLayoutManager(collectLinearLayoutManager);
+
+        container_collector = findViewById(R.id.container_collector);
+        collectorDBOpenHelper = new CollectorDBOpenHelper(this);
+        db =  collectorDBOpenHelper.getWritableDatabase();
+
+        //db.execSQL("DROP TABLE IF EXISTS "+ "collectlist");
     }
     void setStateListener(){
         btn_hard.setOnClickListener(v -> {
@@ -343,13 +372,49 @@ public class MainActivity extends Activity {
             btn_soft.setTextColor(this.getResources().getColor(android.R.color.holo_orange_light));
             btn_hard.setTextColor(this.getResources().getColor(R.color.black));
         });
+        findViewById(R.id.btn_collector).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                container_collector.setVisibility(View.VISIBLE);
+                isCollectorListVisi = true;
+
+                if(container_menu_option.getVisibility()== View.VISIBLE){
+                    container_menu_option.setVisibility(View.GONE);     //一定要GONE 不然会显示不出来
+                    isMenuOptVisi = false;
+                    Log.e("菜单显示/按键"," 隐藏菜单");
+                }
+            }
+        });
     }
     @SuppressLint("ResourceType")
     public void setPlayingState(int position){
         ChannelAdapter.ViewHolder viewHolder = (ChannelAdapter.ViewHolder)
                 channelRecyclerView.findViewHolderForAdapterPosition(position);
     }
+    void loadCollectorList(){
+        int tempCategoryIndex;
+        int tempChannelIndex;
+        ModelTV ModelTvTemp;
+        List<ModelTV.ListItem> ChannelListTemp = new LinkedList<>() ;      //检索到的二级频道列表
+        ModelTV.ListItem ChannelItemTemp;
+        Cursor cursor = db.query("collectlist", null, null, null, null, null, null);
+        if (cursor.moveToFirst()) {
+            do {
+                tempCategoryIndex = cursor.getInt( cursor.getColumnIndex("categoryindex") );
+                tempChannelIndex = cursor.getInt( cursor.getColumnIndex("channelindex") );
+                ModelTvTemp = allProgramList.get(tempCategoryIndex);
+                ChannelListTemp = ModelTvTemp.getList();
+                ChannelItemTemp = ChannelListTemp.get(tempChannelIndex);
 
+
+                collectorChannelList.add(ChannelItemTemp);      //放入收藏
+            } while (cursor.moveToNext());
+        }
+        cursor.close();
+
+        collectChannelAdapter = new ChannelAdapter(this,collectorChannelList);
+        collect_recyclerview.setAdapter(collectChannelAdapter);
+    }
     void loadFirstCategories(){
         //放入第一级分类
         firstCategoryAdapter = new FirstCategoryAdapter(this, categoryItemList);
@@ -382,7 +447,7 @@ public class MainActivity extends Activity {
                 if (view.hasFocus() && !firstFromCateToChannel ) {       // 聚焦一级列表 且 返回一级列表之后， 执行方法.
                     textView_currentIndex.setText("0");                 //设置当前初始index
 
-                    currentFocusCategory = categoryList[position];
+                    currentFocusCategory = categoryItemList.get(position).getCategoryName();
                     //Toast.makeText(getApplicationContext(), "你的焦点 改到了第" + currentFocusCategory, Toast.LENGTH_SHORT).show();
 
                     if(isJieMuVisi) {        // 显示界面后才可以加载/切换/显示 channels
@@ -400,6 +465,7 @@ public class MainActivity extends Activity {
                     }
                 }
                 if (view.hasFocus()){
+                    currentFocusCategoryIndex = position;
                     hasChangeChannelForJumpFocus = true;        //切换categories焦点
                     firstFromCateToChannel = false;     //一级列表获得焦点后， 可以在切换一级列表焦点时 刷新adapter
                     Log.i("Category Item聚焦","cate获焦，可以刷新channel列表");
@@ -505,6 +571,7 @@ public class MainActivity extends Activity {
             } else if (!view.hasFocus()) {         //焦点失去时执行
             }
         });
+        //--------------------Channel Adapter的Item 点击监听--------------------------
         channelAdapter.setmOnVideoClickListener(new ChannelAdapter.OnVideosClickListener() {
             @Override
             public void onMyClick(View view, int position) {        //点击频道时触发
@@ -523,6 +590,18 @@ public class MainActivity extends Activity {
                 }
             }
         });
+        //--------------------Channel Adapter的Item 长按点击监听--------------------------
+        channelAdapter.setOnItemOnLongClickListener(new ChannelAdapter.OnRecyclerViewItemOnLongClickListener() {
+            @Override
+            public void onLongClick(View view, int position, Context mContext) {
+                Toast.makeText(getApplicationContext(), "你长按了", Toast.LENGTH_SHORT).show();
+                ContentValues values = new ContentValues();
+                values.put("categoryindex", currentFocusCategoryIndex);
+                values.put("channelindex",position);
+                db.insert("collectlist", null, values);
+            }
+        });
+
     }
 
     /**
@@ -747,6 +826,7 @@ public class MainActivity extends Activity {
     }
 
     private long mExitTime;
+    private boolean shortPressCenter = false;
     //按键控制
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event){
@@ -802,53 +882,53 @@ public class MainActivity extends Activity {
                 break;
 
             case KeyEvent.KEYCODE_0:
-                if(!strSwitchTv.equals("") && strSwitchTv.length()<4){    strSwitchTv += "0";       //当检索频道值不为空 且 位数小于4时才执行
+                if(!strSwitchTv.equals("") && strSwitchTv.length()<4 && !isJieMuVisi){    strSwitchTv += "0";       //当检索频道值不为空 且 位数小于4时才执行,且节目栏不显示时
                 Log.e("按键"," 点下了 0 按键");
                 Log.e("按键",strSwitchTv);
                 showSwitchProgramWindow();  }
                 break;
             case KeyEvent.KEYCODE_1:
-                if(strSwitchTv.length()<4){     strSwitchTv += "1";
+                if(strSwitchTv.length()<4 && !isJieMuVisi){     strSwitchTv += "1";
                 Log.e("按键"," 点下了 1 按键");
                 showSwitchProgramWindow();}
                 break;
             case KeyEvent.KEYCODE_2:
-                if(strSwitchTv.length()<4){     strSwitchTv += "2";
+                if(strSwitchTv.length()<4 && !isJieMuVisi){     strSwitchTv += "2";
                 Log.e("按键"," 点下了 2 按键");
                 showSwitchProgramWindow();}
                 break;
             case KeyEvent.KEYCODE_3:
-                if(strSwitchTv.length()<4){     strSwitchTv += "3";
+                if(strSwitchTv.length()<4 && !isJieMuVisi){     strSwitchTv += "3";
                 Log.e("按键"," 点下了 3 按键");
                 showSwitchProgramWindow();}
                 break;
             case KeyEvent.KEYCODE_4:
-                if(strSwitchTv.length()<4){     strSwitchTv += "4";
+                if(strSwitchTv.length()<4 && !isJieMuVisi){     strSwitchTv += "4";
                 Log.e("按键"," 点下了 4 按键");
                     showSwitchProgramWindow();}
                 break;
             case KeyEvent.KEYCODE_5:
-                if(strSwitchTv.length()<4){     strSwitchTv += "5";
+                if(strSwitchTv.length()<4 && !isJieMuVisi){     strSwitchTv += "5";
                 Log.e("按键"," 点下了 5 按键");
                     showSwitchProgramWindow();}
                 break;
             case KeyEvent.KEYCODE_6:
-                if(strSwitchTv.length()<4){     strSwitchTv += "6";
+                if(strSwitchTv.length()<4 && !isJieMuVisi){     strSwitchTv += "6";
                 Log.e("按键"," 点下了 6 按键");
                     showSwitchProgramWindow();}
                 break;
             case KeyEvent.KEYCODE_7:
-                if(strSwitchTv.length()<4){     strSwitchTv += "7";
+                if(strSwitchTv.length()<4 && !isJieMuVisi){     strSwitchTv += "7";
                 Log.e("按键"," 点下了 7 按键");
                     showSwitchProgramWindow();}
                 break;
             case KeyEvent.KEYCODE_8:
-                if(strSwitchTv.length()<4){     strSwitchTv += "8";
+                if(strSwitchTv.length()<4 && !isJieMuVisi){     strSwitchTv += "8";
                 Log.e("按键"," 点下了 8 按键");
                     showSwitchProgramWindow();}
                 break;
             case KeyEvent.KEYCODE_9:
-                if(strSwitchTv.length()<4){     strSwitchTv += "9";
+                if(strSwitchTv.length()<4 && !isJieMuVisi){     strSwitchTv += "9";
                 Log.e("按键"," 点下了 9 按键");
                     showSwitchProgramWindow();}
                 break;
@@ -863,6 +943,11 @@ public class MainActivity extends Activity {
                     container_menu_option.setVisibility(View.GONE);     //一定要GONE 不然会显示不出来
                     isMenuOptVisi = false;
                     Log.e("菜单显示/按键"," 隐藏菜单");
+                    return true;
+                }
+                if(isCollectorListVisi){
+                    container_collector.setVisibility(View.INVISIBLE);
+                    isCollectorListVisi = false;
                     return true;
                 }
                 if(!isJieMuVisi && !isMenuOptVisi){     //直接退出app
@@ -881,7 +966,6 @@ public class MainActivity extends Activity {
 
         return super.onKeyDown(keyCode, event);
     }
-
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         switch (event.getKeyCode()){

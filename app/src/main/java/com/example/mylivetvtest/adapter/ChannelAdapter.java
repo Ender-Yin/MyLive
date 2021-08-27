@@ -21,7 +21,7 @@ import java.util.List;
 /**
  * 展示所有视频的列表 4*4， 统一布局
  */
-public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHolder> implements View.OnFocusChangeListener,View.OnClickListener{
+public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHolder> implements View.OnFocusChangeListener,View.OnClickListener,View.OnLongClickListener {
     Intent intent;
 
     //data
@@ -82,6 +82,7 @@ public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHold
         view.setTag(position);
         view.setOnFocusChangeListener(this);
         view.setOnClickListener(this);
+        view.setOnLongClickListener(this);
 
         //在activity中改变数据后 调用notify 重新判断执行
         if(mData.get(position).isPlaying()){
@@ -132,6 +133,11 @@ public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHold
     public void onClick(View v) {
         mOnVideoClickListener.onMyClick(v, (Integer) v.getTag());
     }
+    @Override
+    public boolean onLongClick(View v) {
+        mOnItemOnLongClickListener.onLongClick(v, (int)v.getTag(), context);
+        return false;
+    }
 
     void initListener(){
 
@@ -157,6 +163,17 @@ public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHold
 
     public void setOnItemFocusChangeListener(ChannelAdapter.OnRecyclerViewItemFocusChangeListener listener) {
         this.mOnItemFocusChangeListener = listener;
+    }
+
+    //---------------提供聚焦回调函数-------------
+    private ChannelAdapter.OnRecyclerViewItemOnLongClickListener mOnItemOnLongClickListener = null;
+
+    public interface OnRecyclerViewItemOnLongClickListener {
+        void onLongClick(View view, int position,Context mContext);
+    }
+
+    public void setOnItemOnLongClickListener(ChannelAdapter.OnRecyclerViewItemOnLongClickListener listener) {
+        this.mOnItemOnLongClickListener = listener;
     }
 
 }

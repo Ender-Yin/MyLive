@@ -3,7 +3,7 @@
     <!-- 这里是设置为四周 也可以单独设置某个位置为圆角-->
     <corners android:radius="5dp" />
     <!-- 这里设置边框 -->
-    <stroke android:width="2.5dp" android:color="@color/teal_200" />
+    <stroke android:width="2.5dp" android:color="@color/white" />
     <!-- 这里设置内部颜色 -->
-    <solid android:color="@color/myBlue" />
+    <solid android:color="@android:color/holo_red_light" />
 </shape>
