@@ -2,6 +2,7 @@ package com.example.mylivetvtest.adapter;
 
 import android.content.Context;
 import android.content.Intent;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -77,6 +78,7 @@ public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHold
 
         holder.mTextViewOrder.setText(mData.get(position).getOrder());
         holder.mTextViewTitle.setText(mData.get(position).getDname());
+        holder.mTextViewTitle.setSelected(true);
 
         //设置监听器
         view.setTag(position);
@@ -127,6 +129,7 @@ public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHold
 
     @Override
     public void onFocusChange(View v, boolean hasFocus) {
+
         mOnItemFocusChangeListener.onMyFocusChange(v, (int)v.getTag(), context);
     }
     @Override
@@ -144,7 +147,11 @@ public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHold
     }
 
     //---------------提供点击回调函数-------------
-    private OnVideosClickListener mOnVideoClickListener = null;
+    private OnVideosClickListener mOnVideoClickListener = new OnVideosClickListener() {
+        @Override
+        public void onMyClick(View view, int position) {
+        }
+    };
 
     public  interface OnVideosClickListener{
         void onMyClick(View view,int position);
@@ -155,7 +162,11 @@ public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHold
     }
 
     //---------------提供聚焦回调函数-------------
-    private ChannelAdapter.OnRecyclerViewItemFocusChangeListener mOnItemFocusChangeListener = null;
+    private ChannelAdapter.OnRecyclerViewItemFocusChangeListener mOnItemFocusChangeListener = new OnRecyclerViewItemFocusChangeListener() {
+        @Override
+        public void onMyFocusChange(View view, int position, Context mContext) {
+        }
+    };
 
     public interface OnRecyclerViewItemFocusChangeListener {
         void onMyFocusChange(View view, int position,Context mContext);
@@ -166,7 +177,11 @@ public class ChannelAdapter extends RecyclerView.Adapter<ChannelAdapter.ViewHold
     }
 
     //---------------提供聚焦回调函数-------------
-    private ChannelAdapter.OnRecyclerViewItemOnLongClickListener mOnItemOnLongClickListener = null;
+    private ChannelAdapter.OnRecyclerViewItemOnLongClickListener mOnItemOnLongClickListener = new OnRecyclerViewItemOnLongClickListener() {
+        @Override
+        public void onLongClick(View view, int position, Context mContext) {
+        }
+    };
 
     public interface OnRecyclerViewItemOnLongClickListener {
         void onLongClick(View view, int position,Context mContext);

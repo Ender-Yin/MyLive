@@ -15,6 +15,7 @@ public class CollectorDBOpenHelper extends SQLiteOpenHelper {
     @Override
     //数据库第一次创建时被调用
     public void onCreate(SQLiteDatabase db) {
+        //收藏表中只有 该收藏频道的： 分类下标 和 频道自身下标
         db.execSQL("CREATE TABLE collectlist(categoryindex INTEGER ,"
                                             + "channelindex INTEGER)");
 

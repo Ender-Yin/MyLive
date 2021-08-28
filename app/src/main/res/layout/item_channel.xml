@@ -2,7 +2,7 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="350dp"
+    android:layout_width="400dp"
     android:layout_height="70dp"
     android:layout_gravity="center"
     android:focusable="true"
@@ -33,15 +33,20 @@
 
     <TextView
         android:id="@+id/textView_channel_name"
-        android:layout_width="wrap_content"
+        android:layout_width="170dp"
         android:layout_height="wrap_content"
         android:layout_centerVertical="true"
-        android:layout_marginLeft="15dp"
-        android:layout_toRightOf="@id/textView_channel_order"
         android:text="TextView"
         android:textColor="#FFFFFF"
         android:textSize="24sp"
-        android:textStyle="bold" />
+        android:textStyle="bold"
+        android:layout_marginStart="15dp"
+        android:layout_toEndOf="@id/textView_channel_order"
+        android:layout_toRightOf="@id/textView_channel_order"
+        android:layout_marginLeft="15dp"
+        android:singleLine="true"
+        android:ellipsize="none"
+        android:marqueeRepeatLimit="marquee_forever" />
 
     <ImageView
         android:id="@+id/imageView_playing"
@@ -49,9 +54,10 @@
         android:layout_height="60dp"
         android:layout_centerVertical="true"
         android:layout_toRightOf="@id/textView_channel_name"
-        android:layout_marginStart="30dp"
+        android:layout_marginStart="10dp"
         android:layout_toEndOf="@id/textView_channel_name"
         android:src="@drawable/playingstate"
-        android:visibility="invisible"/>
+        android:visibility="invisible"
+        android:layout_marginLeft="10dp" />
 
 </RelativeLayout>

@@ -49,7 +49,7 @@
 
         <LinearLayout
             android:id="@+id/window_channel_info"
-            android:layout_width="500dp"
+            android:layout_width="wrap_content"
             android:layout_height="100dp"
             android:layout_centerHorizontal="true"
             android:layout_alignParentBottom="true"
@@ -68,25 +68,37 @@
                 android:background="@color/teal_700"/>
             <LinearLayout
                 android:layout_height="match_parent"
-                android:layout_width="200dp"
-                android:orientation="vertical">
+                android:layout_width="wrap_content"
+                android:orientation="vertical"
+                android:paddingLeft="10dp"
+                android:paddingRight="10dp">
                 <TextView
                     android:id="@+id/channel_window_info_name"
-                    android:layout_width="match_parent"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:gravity="center"
                     android:textColor="#FFFFFF"
                     android:textSize="34sp"
-                    android:text="TextView" />
+                    android:text="TextView"
+                    android:maxLines="1"/>
                 <TextView
-                    android:layout_width="match_parent"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:gravity="center"
                     android:textColor="#FFFFFF"
                     android:textSize="34sp"
                     android:text="TextView" />
+            </LinearLayout>
+            <LinearLayout
+                android:layout_width="150dp"
+                android:layout_height="match_parent"
+                android:text="1"
+                android:textColor="#FFFFFF"
+                android:textSize="40sp"
+                android:gravity="center"
+                android:background="@color/teal_700">
             </LinearLayout>
         </LinearLayout>
 
@@ -190,7 +202,7 @@
                 android:id="@+id/collect_recyclerview"
                 android:layout_width="350dp"
                 android:layout_height="match_parent"
-                android:descendantFocusability="beforeDescendants"
+                android:descendantFocusability="afterDescendants"
                 android:focusable="false"
                 />
         </RelativeLayout>
@@ -198,7 +210,7 @@
 
     <RelativeLayout
         android:id="@+id/jiemulan"
-        android:layout_width="550dp"
+        android:layout_width="600dp"
         android:layout_height="match_parent"
         android:background="#020843"
         android:focusable="false">
@@ -225,7 +237,7 @@
 
         <RelativeLayout
             android:id="@+id/category_head"
-            android:layout_width="350dp"
+            android:layout_width="400dp"
             android:layout_height="105dp"
             android:layout_toRightOf="@id/line1_1"
             android:focusable="false">
@@ -298,7 +310,7 @@
 
         <com.example.mylivetvtest.newWidgt.FocusRecyclerView
             android:id="@+id/channel_recyclerView"
-            android:layout_width="350dp"
+            android:layout_width="400dp"
             android:layout_height="match_parent"
             android:layout_below="@id/category_head"
             android:layout_toRightOf="@id/line1_1"

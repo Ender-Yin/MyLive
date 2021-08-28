@@ -32,7 +32,18 @@ public class ModelTV {
         public String order;
         public String id;
         public List<String> UrlList;
+
         private boolean isPlaying = false;
+
+        public ListItem(String dname, String url, String ico, String order, String id, List<String> urlList) {
+            this.dname = dname;
+            this.url = url;
+            this.ico = ico;
+            this.order = order;
+            this.id = id;
+            UrlList = urlList;
+        }
+
 
         public List<String> getUrlList() {
             return UrlList;
